@@ -1,0 +1,33 @@
+name: openhab_sonoff_basic
+author: Michael Fung <hkuser2001@gmail.com>
+version: 1.0
+skeleton_version: 2017-05-18
+sources:
+  - src
+filesystem:
+  - fs
+libs:
+    # common mgos libs
+  - origin: https://github.com/mongoose-os-libs/http-server
+  - origin: https://github.com/mongoose-os-libs/rpc-loopback
+  - origin: https://github.com/mongoose-os-libs/rpc-mqtt
+  - origin: https://github.com/mongoose-os-libs/rpc-service-config
+  - origin: https://github.com/mongoose-os-libs/rpc-service-fs
+  - origin: https://github.com/mongoose-os-libs/rpc-service-gpio
+  - origin: https://github.com/mongoose-os-libs/rpc-uart
+  - origin: https://github.com/mongoose-os-libs/spi
+  - origin: https://github.com/mongoose-os-libs/vfs-dev-spi-flash
+  - origin: https://github.com/mongoose-os-libs/mjs
+config_schema:
+  - ["debug.level", 3]
+  - ["wifi.sta.ssid", "TOTO_2G"]
+  - ["wifi.sta.pass", "hackmeifyoucan"]
+  - ["wifi.sta.enable", true]
+  - ["wifi.ap.keep_enabled", false]
+  - ["mqtt.enable", true]
+  - ["mqtt.server", "hab2.lan:1883"]
+build_vars:
+  # sonoff basic has 1MBytes flash only
+  FLASH_SIZE: 1048576
+
+

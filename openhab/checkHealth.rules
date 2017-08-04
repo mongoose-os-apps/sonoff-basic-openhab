@@ -1,0 +1,17 @@
+import org.joda.time.DateTime
+
+rule "Check Stale Reported Data"
+when
+	Time cron "10 0/5 * * * ?"  // every 10th second of every 5 minute
+then
+	var DateTime min10ago = now.minusMinutes(10)
+
+	if ((new DateTime(Test_Lights_Switch_Uptime.lastUpdate)) > min10ago ) {
+		// logInfo("rules", "Test_Lights_Switch update ok")
+		Test_Lights_Switch_Health.postUpdate("ON")
+	} else {
+		logInfo("rules", "Test_Lights_Switch update delayed")
+		Test_Lights_Switch_Health.postUpdate("OFF")
+	}
+
+end

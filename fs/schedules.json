@@ -1,0 +1,1 @@
+{"sch":[{"min":30,"hour":10,"dow":"*","value":1,"label":"lights on"},{"min":0,"hour":15,"dow":"*","value":0,"label":"lights off"}]}
