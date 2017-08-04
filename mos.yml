@@ -1,5 +1,6 @@
 name: openhab_sonoff_basic
 author: Michael Fung <hkuser2001@gmail.com>
+description: Sonoff Basic firmware to work with openHAB
 version: 1.0
 skeleton_version: 2017-05-18
 sources:
