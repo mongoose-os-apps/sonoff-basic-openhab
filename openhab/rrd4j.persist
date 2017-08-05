@@ -8,5 +8,5 @@ Strategies {
 }
 
 Items {
-    // Test_Lights_Switch_Daily_Usage is persisted by rules, so not placed here.
+    // Bedroom_Lights_Switch_Daily_Usage is persisted by rules, so not placed here.
 }
