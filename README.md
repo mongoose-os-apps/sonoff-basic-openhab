@@ -11,6 +11,10 @@ and powered by [Mongoose OS](https://mongoose-os.com/). It targets to work with 
 * Device local schedule timer
 * switch ON duration counter for energy consumption analysis
 
+### openHAB UI
+
+![openHAB UI](https://raw.githubusercontent.com/mongoose-os-apps/sonoff-basic-openhab/master/openhab/sonoff-basic-ui.png "openHAB for Android")
+
 ### Build
 
 Build locally with docker:
@@ -77,7 +81,7 @@ sitemap default label="Home Sweet Home"
 {
 
 	Frame label="Bedroom" {
-		Switch item=Bedroom_Lights_Switch label="Lights Switch" icon="light"
+		Switch item=Bedroom_Lights_Switch label="Light Switch" icon="light"
 		Text item=Bedroom_Lights_Switch_RAM label="RAM Free [%d bytes]" icon="line-stagnation"
 		Text item=Bedroom_Lights_Switch_Uptime label="Uptime [%s]" icon="line-stagnation"
 		Text item=Bedroom_Lights_Switch_Daily_Usage label="Total ON Time today [%.0f min]" icon="line-stagnation"
