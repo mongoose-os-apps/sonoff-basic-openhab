@@ -1,7 +1,7 @@
 name: openhab_sonoff_basic
 author: Michael Fung <hkuser2001@gmail.com>
 description: Sonoff Basic firmware to work with openHAB
-version: 1.0
+version: 1.1_170810
 skeleton_version: 2017-05-18
 tags:
   - cloud
@@ -22,12 +22,8 @@ libs:
   - origin: https://github.com/mongoose-os-libs/spi
   - origin: https://github.com/mongoose-os-libs/vfs-dev-spi-flash
   - origin: https://github.com/mongoose-os-libs/mjs
+  - origin: https://github.com/mongoose-os-libs/wifi
 config_schema:
-  - ["debug.level", 3]
-  - ["wifi.sta.ssid", "TOTO_2G"]
-  - ["wifi.sta.pass", "hackmeifyoucan"]
-  - ["wifi.sta.enable", true]
-  - ["wifi.ap.keep_enabled", false]
   - ["mqtt.enable", true]
   - ["mqtt.server", "hab2.lan:1883"]
 build_vars:
