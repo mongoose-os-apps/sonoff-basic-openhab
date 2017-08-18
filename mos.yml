@@ -1,8 +1,13 @@
 name: openhab_sonoff_basic
 author: Michael Fung <hkuser2001@gmail.com>
 description: Sonoff Basic firmware to work with openHAB
-version: 1.1_170810
+version: 1.1_170818
 skeleton_version: 2017-05-18
+
+libs_version: ${mos_version}
+modules_version: ${mos_version}
+mongoose_os_version: ${mos_version}
+
 tags:
   - cloud
   - c
@@ -14,10 +19,9 @@ libs:
     # common mgos libs
   - origin: https://github.com/mongoose-os-libs/http-server
   - origin: https://github.com/mongoose-os-libs/rpc-loopback
-  - origin: https://github.com/mongoose-os-libs/rpc-mqtt
+  - origin: https://github.com/mongoose-os-libs/mqtt
   - origin: https://github.com/mongoose-os-libs/rpc-service-config
   - origin: https://github.com/mongoose-os-libs/rpc-service-fs
-  - origin: https://github.com/mongoose-os-libs/rpc-service-gpio
   - origin: https://github.com/mongoose-os-libs/rpc-uart
   - origin: https://github.com/mongoose-os-libs/spi
   - origin: https://github.com/mongoose-os-libs/vfs-dev-spi-flash
@@ -29,5 +33,3 @@ config_schema:
 build_vars:
   # sonoff basic has 1MBytes flash only
   FLASH_SIZE: 1048576
-
-
