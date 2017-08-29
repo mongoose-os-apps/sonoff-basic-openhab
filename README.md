@@ -15,6 +15,8 @@ and powered by [Mongoose OS](https://mongoose-os.com/). It targets to work with 
 
 ![openHAB UI](https://raw.githubusercontent.com/mongoose-os-apps/sonoff-basic-openhab/master/openhab/sonoff-basic-ui.png "openHAB for Android")
 
+![energy consumption chart](https://raw.githubusercontent.com/mongoose-os-apps/sonoff-basic-openhab/master/openhab/energy-chart.png "energy consumption chart")
+
 ### Build
 
 Build locally with docker:
