@@ -50,7 +50,7 @@ mos --port "ws://${DEV_ADDR}/rpc" config-set \
 ```
 
 
-### Setup at openHAB side
+### Setup at openHAB side (valid only for pre 2.4 or 1.x binding)
 
 If we use the locally installed mosquitto server, the MQTT broker can be configured as follows:
 

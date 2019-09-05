@@ -2,7 +2,7 @@ name: openhab_sonoff_basic
 author: Michael Fung <hkuser2001@gmail.com>
 description: Sonoff Basic firmware to work with openHAB
 version: 1.1_170818
-skeleton_version: 2017-05-18
+manifest_version: 2017-05-18
 
 libs_version: ${mos_version}
 modules_version: ${mos_version}
@@ -30,6 +30,10 @@ libs:
 config_schema:
   - ["mqtt.enable", true]
   - ["mqtt.server", "hab2.lan:1883"]
+
+platform: esp8266
 build_vars:
   # sonoff basic has 1MBytes flash only
   FLASH_SIZE: 1048576
+  BOARD: esp8266-1M
+
