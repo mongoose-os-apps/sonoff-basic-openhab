@@ -1,7 +1,11 @@
 ## A Sonoff Basic firmware to work with openHAB
 
 This firmware drives Sonoff Basic from [iTead Studio](https://www.itead.cc/),
-and powered by [Mongoose OS](https://mongoose-os.com/). It targets to work with openHAB2.
+and powered by [Mongoose OS](https://mongoose-os.com/).
+It targets to work with openHAB2 using the v1.x MQTT binding.
+
+If you happen to use or like the 2.4+ newer version of the MQTT binding, you might like to check
+[this example](https://github.com/mongoose-os-apps/sonoff-basic-openhab2) instead, as it takes advantage of the auto-discovery capability of the Homie Convention; you will be guided to come back here if needed. Nevertheless, you may use this example on that same setup.
 
 ### Features
 
@@ -50,7 +54,7 @@ mos --port "ws://${DEV_ADDR}/rpc" config-set \
 ```
 
 
-### Setup at openHAB side (valid only for pre 2.4 or 1.x binding)
+### Setup at openHAB side for pre 2.4 or 1.x binding
 
 If we use the locally installed mosquitto server, the MQTT broker can be configured as follows:
 
@@ -94,3 +98,12 @@ sitemap default label="Home Sweet Home"
 
 Please find related rules and scripts inside the openhab folder.
 
+### Setup at openHAB side for 2.4 and later with the 2.x binding
+
+As explained in [this example](https://github.com/mongoose-os-apps/sonoff-basic-openhab2), the broker can be discovered and graphically added.
+
+You can configure your items and switches as depicted above, but first you need to manually add a Thing and its Channels. You will do that graphically at the Paper UI; first add a New Thing, then MQTT Binding, then Generic MQTT Thing. Select your bridge (your broker) and save it. Then select your Generic MQTT Thing and add a Channel for every item you will use.
+Finally, use those channel ids in the items file above.
+It is clearly explained [here](https://community.openhab.org/t/migrating-mqtt1-items-to-mqtt2-4-items/60502).
+
+Again, if you use the 2.4+ version of the MQTT binding, you might check [this example](https://github.com/mongoose-os-apps/sonoff-basic-openhab2) instead.
