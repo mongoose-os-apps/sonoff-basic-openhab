@@ -41,28 +41,12 @@ static void blink_on_board_led_cb(void *arg) {
     (void) arg;
 }
 
-//static void pub(struct mg_connection *c, const char *fmt, ...) {
-  //char msg[200];
-  //struct json_out jmo = JSON_OUT_BUF(msg, sizeof(msg));
-  //va_list ap;
-  //int n;
-  //va_start(ap, fmt);
-  //n = json_vprintf(&jmo, fmt, ap);
-  //va_end(ap);
-  //mg_mqtt_publish(c, get_cfg()->mqtt.pub, 0, MG_MQTT_QOS(0), msg, n);
-  //LOG(LL_INFO, ("%s -> %s", get_cfg()->mqtt.pub, msg));
-//}
-
 static void mqtt_ev_handler(struct mg_connection *c, int ev, void *p, void *user_data) {
   struct mg_mqtt_message *msg = (struct mg_mqtt_message *) p;
   if (ev == MG_EV_MQTT_CONNACK) {
     LOG(LL_INFO, ("CONNACK: %d", msg->connack_ret_code));
     mqtt_conn_flag = true;
-    //if (get_cfg()->mqtt.pub == NULL) {
-      //LOG(LL_ERROR, ("Run 'mos config-set mqtt.pub=... '"));
-    //} else {
-      //pub(c, "{timestamp:%.3lf, mem_free:%d}", mg_time(), mgos_get_free_heap_size() );  /* post uptime */
-    //}
+  
   } else if (ev == MG_EV_CLOSE) {
       mqtt_conn_flag = false;
   }
