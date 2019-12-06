@@ -23,13 +23,16 @@ If you happen to use or like the 2.4+ newer version of the MQTT binding, you mig
 
 ### Build
 
+Build using default cloud service:
+    mos build --platform esp8266
+
 Build locally with docker:
 
-	mos build --local --clean --repo ~/git/mongoose-os --arch esp8266
+	mos build --local --clean --repo ~/git/mongoose-os --platform esp8266
 
 Same as above with source pining to currently downloaded version:
 
-	mos build --local --clean --no-libs-update --repo ~/git/mongoose-os --arch esp8266
+	mos build --local --clean --no-libs-update --repo ~/git/mongoose-os --platform esp8266
 
 ### Flash
 
