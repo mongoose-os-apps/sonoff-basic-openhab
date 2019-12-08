@@ -36,5 +36,5 @@ backup/
 temp/
 tmp/
 build/
-
+deps/
 

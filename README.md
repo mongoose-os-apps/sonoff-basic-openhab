@@ -24,6 +24,7 @@ If you happen to use or like the 2.4+ newer version of the MQTT binding, you mig
 ### Build
 
 Build using default cloud service:
+
     mos build --platform esp8266
 
 Build locally with docker:
@@ -46,9 +47,8 @@ For example, device ID is **sb-01**
 
 ```
 DEV_ID="sb-01"
-DEV_ADDR="sb-01.lan"
 
-mos --port "ws://${DEV_ADDR}/rpc" config-set \
+mos config-set \
   device.id="${DEV_ID}" \
   mqtt.client_id="${DEV_ID}" \
   mqtt.will_topic="sonoff_basic/${DEV_ID}/link" \
