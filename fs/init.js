@@ -180,7 +180,7 @@ MQTT.setEventHandler(function(conn, ev, edata) {
 
 // check sntp sync, to be replaced by sntp event handler after implemented by OS
 let clock_check_timer = Timer.set(30000 , true /* repeat */, function() {
-	if (Timer.now() > 1498867200 /* 2017-07-01 */) {
+	if (Timer.now() > 1575763200 /* 2018-12-08 */) {
 		clock_sync = true;
 		load_sch();
 		Timer.del(clock_check_timer);
