@@ -28,7 +28,7 @@ static void blink_on_board_led_cb(void *arg) {
     static uint8_t remainder;
 
     if (mqtt_conn_flag) {
-        remainder = (++led_timer_ticks % 40);
+        remainder = (++led_timer_ticks % 15);  // every 15*200ms = 3 secs
         if (remainder == 0) {
             led_timer_ticks = 0;
             mgos_gpio_write(ON_BOARD_LED, 0);  // on
@@ -57,7 +57,7 @@ static void mqtt_ev_handler(struct mg_connection *c, int ev, void *p, void *user
 enum mgos_app_init_result mgos_app_init(void) {
 
   mgos_gpio_set_mode(ON_BOARD_LED, MGOS_GPIO_MODE_OUTPUT);
-  mgos_set_timer(100 /* ms */, true /* repeat */, blink_on_board_led_cb, NULL);
+  mgos_set_timer(200 /* ms */, true /* repeat */, blink_on_board_led_cb, NULL);
 
   mgos_mqtt_add_global_handler(mqtt_ev_handler, NULL);
   return MGOS_APP_INIT_SUCCESS;

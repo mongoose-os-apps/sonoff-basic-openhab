@@ -36,6 +36,7 @@ config_schema:
   - ["wifi.ap.enable", false]
   - ["wifi.sta.enable", true]
   - ["wifi.ap.keep_enabled", false]
+  - ["sntp.server", "192.168.0.254"]
   - ["debug.udp_log_addr", "192.168.0.1:514"]
 
 platform: esp8266
