@@ -11,8 +11,9 @@
 #include "mgos_timers.h"
 #include "mjs.h"
 
+void set_night_mode(int enable);
+bool night_mode = false;
 static int ON_BOARD_LED = 13; /* sonoff basic LED pin */
-
 bool mqtt_conn_flag = false;
 static uint8_t led_timer_ticks = 0;  /* for led blinker use */
 
@@ -24,21 +25,33 @@ int mqtt_connected(void) {
 	return (int) mqtt_conn_flag;
 }
 
-static void blink_on_board_led_cb(void *arg) {
-    static uint8_t remainder;
+void set_night_mode(int enable) {
+  if (enable > 0) {
+    night_mode = true;
+    mgos_gpio_write(ON_BOARD_LED, 1);  // off
+  } else {
+    night_mode = false;
+  }
+}
 
+static void blink_on_board_led_cb(void *arg) {
+  static uint8_t remainder;
+
+  if (!night_mode) {
     if (mqtt_conn_flag) {
-        remainder = (++led_timer_ticks % 15);  // every 15*200ms = 3 secs
+        remainder = (++led_timer_ticks % 10);  // every 10*200ms = 2 secs
         if (remainder == 0) {
-            led_timer_ticks = 0;
-            mgos_gpio_write(ON_BOARD_LED, 0);  // on
+            led_timer_ticks = 0;            
+              mgos_gpio_write(ON_BOARD_LED, 0);  // on            
         } else if (remainder == 1) {
             mgos_gpio_write(ON_BOARD_LED, 1);  // off
         }
     } else {
         mgos_gpio_toggle(ON_BOARD_LED);
     }
-    (void) arg;
+  }
+
+  (void) arg;
 }
 
 static void mqtt_ev_handler(struct mg_connection *c, int ev, void *p, void *user_data) {

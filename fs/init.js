@@ -47,6 +47,42 @@ GPIO.write(relay_pin, 0);  // default to off
 GPIO.set_mode(spare_pin, GPIO.MODE_INPUT);
 GPIO.set_mode(button_pin, GPIO.MODE_INPUT);
 
+// night mode
+let NightMode = {
+    _set: ffi('void set_night_mode(int)'),
+    _enabled: false,
+    _begin_time: null,
+    _end_time: null,
+    
+    begin: function() {
+        this._set(1);
+        Log.print(Log.INFO, "Night Mode begins");
+    },
+
+    end: function() {
+        this._set(0);
+        Log.print(Log.INFO, "Night Mode ends");
+    },   
+
+    // enable checking night mode schedule
+    enable: function() {
+        this._enabled = true;
+        Log.print(Log.INFO, "Night Mode enabled");
+    },
+    
+    // disable checking night mode schedule
+    disable: function() {
+        this._enabled = false;
+        Log.print(Log.INFO, "Night Mode disabled");
+    },
+
+    // check begin/end time and call corresponding function
+    check_schedule: function() {
+        
+    }
+
+};
+
 // read timer schedules from a json file, must be in UTC
 let sch = [];
 
@@ -68,6 +104,34 @@ let load_sch = function() {
 	}
 	return ok;
 };
+
+// set RPC command to enable night mode
+RPC.addHandler('EnableNightMode', function(args) {
+    // no args parsing required
+    NightMode.enable();
+    return JSON.stringify({result: 'OK'});
+});
+
+// set RPC command to disable night mode
+RPC.addHandler('DisableNightMode', function(args) {
+    // no args parsing required
+    NightMode.disable();
+    return JSON.stringify({result: 'OK'});
+});
+
+// set RPC command to begin night mode
+RPC.addHandler('BeginNightMode', function(args) {
+    // no args parsing required
+    NightMode.begin();
+    return JSON.stringify({result: 'OK'});
+});
+
+// set RPC command to end night mode
+RPC.addHandler('EndNightMode', function(args) {
+    // no args parsing required
+    NightMode.end();
+    return JSON.stringify({result: 'OK'});
+});
 
 // set RPC command to reload schedule timer
 // call me after a new schedules.json file is put into the fs
@@ -118,7 +182,7 @@ let toggle_switch = function() {
     if ( (Sys.uptime() - last_toggle ) > 2 ) {
         GPIO.toggle(relay_pin);
         relay_value = 1 - relay_value; // 0 1 toggle
-        last_toggle = Sys.uptime();
+        last_toggle = Sys.uptime();        
     } else {
         Log.print(Log.ERROR, 'Bounce protection: operation aborted.');
     }
