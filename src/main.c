@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 
 #include "mgos.h"
@@ -41,8 +42,8 @@ static void blink_on_board_led_cb(void *arg) {
     if (mqtt_conn_flag) {
         remainder = (++led_timer_ticks % 10);  // every 10*200ms = 2 secs
         if (remainder == 0) {
-            led_timer_ticks = 0;            
-              mgos_gpio_write(ON_BOARD_LED, 0);  // on            
+            led_timer_ticks = 0;
+              mgos_gpio_write(ON_BOARD_LED, 0);  // on
         } else if (remainder == 1) {
             mgos_gpio_write(ON_BOARD_LED, 1);  // off
         }
@@ -59,7 +60,7 @@ static void mqtt_ev_handler(struct mg_connection *c, int ev, void *p, void *user
   if (ev == MG_EV_MQTT_CONNACK) {
     LOG(LL_INFO, ("CONNACK: %d", msg->connack_ret_code));
     mqtt_conn_flag = true;
-  
+
   } else if (ev == MG_EV_CLOSE) {
       mqtt_conn_flag = false;
   }
@@ -68,6 +69,9 @@ static void mqtt_ev_handler(struct mg_connection *c, int ev, void *p, void *user
 }
 
 enum mgos_app_init_result mgos_app_init(void) {
+
+  int myint = strtol("12",NULL,0);
+  LOG(LL_INFO, ("TEST: %d", myint));
 
   mgos_gpio_set_mode(ON_BOARD_LED, MGOS_GPIO_MODE_OUTPUT);
   mgos_set_timer(200 /* ms */, true /* repeat */, blink_on_board_led_cb, NULL);

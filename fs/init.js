@@ -48,40 +48,51 @@ GPIO.set_mode(spare_pin, GPIO.MODE_INPUT);
 GPIO.set_mode(button_pin, GPIO.MODE_INPUT);
 
 // night mode
-let NightMode = {
-    _set: ffi('void set_night_mode(int)'),
-    _enabled: false,
-    _begin_time: null,
-    _end_time: null,
-    
-    begin: function() {
-        this._set(1);
-        Log.print(Log.INFO, "Night Mode begins");
-    },
-
-    end: function() {
-        this._set(0);
-        Log.print(Log.INFO, "Night Mode ends");
-    },   
-
-    // enable checking night mode schedule
-    enable: function() {
-        this._enabled = true;
-        Log.print(Log.INFO, "Night Mode enabled");
-    },
-    
-    // disable checking night mode schedule
-    disable: function() {
-        this._enabled = false;
-        Log.print(Log.INFO, "Night Mode disabled");
-    },
-
-    // check begin/end time and call corresponding function
-    check_schedule: function() {
-        
+let _set_night_mode = ffi('void set_night_mode(int)');
+let setNightMode = function(val) {
+    if (val > 0) {
+        _set_night_mode(1);
+        Log.print(Log.DEBUG, 'Begin Night Mode');
+    } else {
+        _set_night_mode(0);
+        Log.print(Log.DEBUG, 'End Night Mode');
     }
-
 };
+let nmEnabled = Cfg.get('nm.enable');
+let nmBeginHour = Cfg.get('nm.bh');
+let nmBeginMinute = Cfg.get('nm.bm');
+let nmEndHour = Cfg.get('nm.eh');
+let nmEndMinute = Cfg.get('nm.em');
+let nmBeginMinOfDay = -1;
+let nmEndMinOfDay = -1;
+
+// validate begin - end times
+if (nmEnabled) {
+    nmBeginMinOfDay = (nmBeginHour * 60) + nmBeginMinute;
+    nmEndMinOfDay = (nmEndHour * 60) + nmEndMinute;
+    if (nmBeginMinOfDay < 0 || nmEndMinOfDay < 0 || nmBeginMinOfDay > 1440 || nmEndMinOfDay > 1440) {
+        nmEnabled = false;
+        Log.print(Log.ERROR, 'Begin/End times are invalid. Night Mode disabled!');
+    } else {
+        Log.print(Log.INFO, 'Begin/End times are good. Night Mode enabled.');
+        Log.print(Log.INFO, "Begin Min Of Day: " + JSON.stringify(nmBeginMinOfDay));
+        Log.print(Log.INFO, "End Min Of Day: " + JSON.stringify(nmEndMinOfDay));
+    }
+}
+
+// set RPC command to begin night mode
+RPC.addHandler('NM.Begin', function(args) {
+    // no args parsing required
+    setNightMode(1);
+    return JSON.stringify({result: 'OK'});
+});
+
+// set RPC command to end night mode
+RPC.addHandler('NM.End', function(args) {
+    // no args parsing required
+    setNightMode(0);
+    return JSON.stringify({result: 'OK'});
+});
 
 // read timer schedules from a json file, must be in UTC
 let sch = [];
@@ -105,33 +116,6 @@ let load_sch = function() {
 	return ok;
 };
 
-// set RPC command to enable night mode
-RPC.addHandler('EnableNightMode', function(args) {
-    // no args parsing required
-    NightMode.enable();
-    return JSON.stringify({result: 'OK'});
-});
-
-// set RPC command to disable night mode
-RPC.addHandler('DisableNightMode', function(args) {
-    // no args parsing required
-    NightMode.disable();
-    return JSON.stringify({result: 'OK'});
-});
-
-// set RPC command to begin night mode
-RPC.addHandler('BeginNightMode', function(args) {
-    // no args parsing required
-    NightMode.begin();
-    return JSON.stringify({result: 'OK'});
-});
-
-// set RPC command to end night mode
-RPC.addHandler('EndNightMode', function(args) {
-    // no args parsing required
-    NightMode.end();
-    return JSON.stringify({result: 'OK'});
-});
 
 // set RPC command to reload schedule timer
 // call me after a new schedules.json file is put into the fs
@@ -182,7 +166,7 @@ let toggle_switch = function() {
     if ( (Sys.uptime() - last_toggle ) > 2 ) {
         GPIO.toggle(relay_pin);
         relay_value = 1 - relay_value; // 0 1 toggle
-        last_toggle = Sys.uptime();        
+        last_toggle = Sys.uptime();
     } else {
         Log.print(Log.ERROR, 'Bounce protection: operation aborted.');
     }
@@ -190,7 +174,7 @@ let toggle_switch = function() {
 
 // check schedule and fire if time reached
 let run_sch = function () {
-  Log.print(Log.DEBUG, 'schedules:' + JSON.stringify(sch));
+  Log.print(Log.DEBUG, 'switch schedules:' + JSON.stringify(sch));
 	let now = Math.floor(Timer.now());
 	// calc current time of day from mg_time
 	let min_of_day = Math.floor((now % 86400) / 60);
@@ -205,6 +189,24 @@ let run_sch = function () {
 			update_state();
 		}
 	}
+
+    // check night mode schedule
+    if (nmEnabled) {
+        // Log.print(Log.INFO, 'check night mode schedule, current min of day: ' + JSON.stringify(min_of_day));
+        if (nmBeginMinOfDay > nmEndMinOfDay) { // e.g. 2300 - 0630
+            if ((min_of_day >= nmBeginMinOfDay) || (min_of_day < nmEndMinOfDay)) {
+                setNightMode(1);
+            } else {
+                setNightMode(0);
+            }
+        } else {  // e.g. 0800 - 1730
+            if ((min_of_day >= nmBeginMinOfDay) && (min_of_day < nmEndMinOfDay)) {
+                setNightMode(1);
+            } else {
+                setNightMode(0);
+            }
+        }
+    }
 };
 
 // sonoff button pressed */
@@ -257,11 +259,11 @@ let clock_check_timer = Timer.set(30000 , true /* repeat */, function() {
 // timer loop to update state and run schedule jobs
 let main_loop_timer = Timer.set(1000 /* 1 sec */, true /* repeat */, function() {
   tick_count++;
-  if ( (tick_count % 60) === 0 ) {
+  if ( (tick_count % 60) === 0 ) { /* 1 min */
 	  if (clock_sync) run_sch();
   }
 
-  if ( (tick_count % 300) === 0 ) {
+  if ( (tick_count % 300) === 0 ) { /* 5 min */
 	  tick_count = 0;
       if (mqtt_connected) update_state();
   }
