@@ -13,7 +13,8 @@ If you happen to use or like the 2.4+ newer version of the MQTT binding, you mig
 * On board button to control switch manually in case of no connectivity
 * Bounce protection
 * Device local schedule timer
-* switch ON duration counter for energy consumption analysis
+* Switch ON duration counter for energy consumption analysis
+* Night Mode to turn off status LED
 
 ### openHAB UI
 
@@ -55,6 +56,12 @@ mos config-set \
   mqtt.will_message="OFF"
 
 ```
+
+### Night Mode
+
+Example: set night mode from 23:00 to 6:30 (UTC):
+    
+	mos config-set nm.enable=true nm.bh=23 nm.bm=0 nm.eh=6 nm.em=30
 
 
 ### Setup at openHAB side for pre 2.4 or 1.x binding
