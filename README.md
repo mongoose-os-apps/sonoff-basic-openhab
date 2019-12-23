@@ -13,7 +13,8 @@ If you happen to use or like the 2.4+ newer version of the MQTT binding, you mig
 * On board button to control switch manually in case of no connectivity
 * Bounce protection
 * Device local schedule timer
-* switch ON duration counter for energy consumption analysis
+* Switch ON duration counter for energy consumption analysis
+* Night Mode to turn off status LED
 
 ### openHAB UI
 
@@ -56,6 +57,26 @@ mos config-set \
 
 ```
 
+### Local schedule timer
+
+Before using the local timer, make sure to set correct time zone via `timer.tz`.
+
+For Example, a Hong Kong user:
+
+    mos config-set timer.tz=+0800
+
+And a user in California (DST):
+
+    mos config-set timer.tz=-0700
+
+Then, create a JSON file `schedules.json` and upload to the filesystem. Please reference the
+supplied sample for syntax.
+
+### Night Mode
+
+Example: set night mode from 23:00 to 6:30:
+    
+	mos config-set nm.enable=true nm.bh=23 nm.bm=0 nm.eh=6 nm.em=30
 
 ### Setup at openHAB side for pre 2.4 or 1.x binding
 

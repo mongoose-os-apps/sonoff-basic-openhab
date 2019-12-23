@@ -37,4 +37,4 @@ temp/
 tmp/
 build/
 deps/
-
+.vscode/

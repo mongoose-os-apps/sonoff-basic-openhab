@@ -1,3 +1,8 @@
+/*
+ * Logic for sonoff-basic-openhab
+ * Author: Michael Fung <hkuser2001 at the gmail service>
+*/
+
 // Load Mongoose OS API
 load('api_timer.js');
 load('api_gpio.js');
@@ -39,6 +44,22 @@ let mqtt_connected = false;
 let clock_sync = false;
 let relay_last_on_ts = null;
 let oncount = 0; // relay ON state duration
+let sch_enable = Cfg.get('timer.sch_enable');
+let skip_once = false;  // skip next schedule for once
+
+// helper functions
+let str2int = ffi('int str2int(char *)');
+
+// calc UTC offset
+// NOTE: str2int('08') gives 0
+let tz = Cfg.get('timer.tz');
+let tz_offset = 0; // in seconds
+let tz_sign = tz.slice(0,1);
+tz_offset = (str2int(tz.slice(1,2)) * 10 * 3600) + (str2int(tz.slice(2,3)) * 3600) + (str2int(tz.slice(3,5)) * 60);
+if (tz_sign === '-') {
+    tz_offset = tz_offset * -1;
+}
+Log.print(Log.INFO, 'Local time UTC offset: ' + JSON.stringify(tz_offset) + ' seconds');
 
 // init hardware
 GPIO.set_mode(relay_pin, GPIO.MODE_OUTPUT);
@@ -47,7 +68,54 @@ GPIO.write(relay_pin, 0);  // default to off
 GPIO.set_mode(spare_pin, GPIO.MODE_INPUT);
 GPIO.set_mode(button_pin, GPIO.MODE_INPUT);
 
-// read timer schedules from a json file, must be in UTC
+// night mode
+let _set_night_mode = ffi('void set_night_mode(int)');
+let setNightMode = function(val) {
+    if (val > 0) {
+        _set_night_mode(1);
+        Log.print(Log.DEBUG, 'Begin Night Mode');
+    } else {
+        _set_night_mode(0);
+        Log.print(Log.DEBUG, 'End Night Mode');
+    }
+};
+let nmEnabled = Cfg.get('nm.enable');
+let nmBeginHour = Cfg.get('nm.bh');
+let nmBeginMinute = Cfg.get('nm.bm');
+let nmEndHour = Cfg.get('nm.eh');
+let nmEndMinute = Cfg.get('nm.em');
+let nmBeginMinOfDay = -1;
+let nmEndMinOfDay = -1;
+
+// validate begin - end times
+if (nmEnabled) {
+    nmBeginMinOfDay = (nmBeginHour * 60) + nmBeginMinute;
+    nmEndMinOfDay = (nmEndHour * 60) + nmEndMinute;
+    if (nmBeginMinOfDay < 0 || nmEndMinOfDay < 0 || nmBeginMinOfDay > 1440 || nmEndMinOfDay > 1440) {
+        nmEnabled = false;
+        Log.print(Log.ERROR, 'Begin/End times are invalid. Night Mode disabled!');
+    } else {
+        Log.print(Log.INFO, 'Begin/End times are good. Night Mode enabled.');
+        Log.print(Log.INFO, "Begin Min Of Day: " + JSON.stringify(nmBeginMinOfDay));
+        Log.print(Log.INFO, "End Min Of Day: " + JSON.stringify(nmEndMinOfDay));
+    }
+}
+
+// set RPC command to begin night mode
+RPC.addHandler('NM.Begin', function(args) {
+    // no args parsing required
+    setNightMode(1);
+    return JSON.stringify({result: 'OK'});
+});
+
+// set RPC command to end night mode
+RPC.addHandler('NM.End', function(args) {
+    // no args parsing required
+    setNightMode(0);
+    return JSON.stringify({result: 'OK'});
+});
+
+// read timer schedules from a json file
 let sch = [];
 
 let load_sch = function() {
@@ -68,6 +136,7 @@ let load_sch = function() {
 	}
 	return ok;
 };
+
 
 // set RPC command to reload schedule timer
 // call me after a new schedules.json file is put into the fs
@@ -95,7 +164,9 @@ let update_state = function() {
         uptime: uptime,
         memory: Sys.free_ram(),
         relay_state: relay_value ? 'ON' : 'OFF',
-        oncount: Math.floor(oncount)
+        oncount: Math.floor(oncount),
+        skip_once: skip_once ? 'ON' : 'OFF',
+        sch_enable: sch_enable ? 'ON' : 'OFF'
     });
     let ok = MQTT.pub(hab_state_topic, pubmsg);
     Log.print(Log.INFO, 'Published:' + (ok ? 'OK' : 'FAIL') + ' topic:' + hab_state_topic + ' msg:' +  pubmsg);
@@ -126,21 +197,46 @@ let toggle_switch = function() {
 
 // check schedule and fire if time reached
 let run_sch = function () {
-  Log.print(Log.DEBUG, 'schedules:' + JSON.stringify(sch));
-	let now = Math.floor(Timer.now());
+  Log.print(Log.DEBUG, 'switch schedules:' + JSON.stringify(sch));
+	let local_now = Math.floor(Timer.now()) + tz_offset;
 	// calc current time of day from mg_time
-	let min_of_day = Math.floor((now % 86400) / 60);
+	let min_of_day = Math.floor((local_now % 86400) / 60);
 	// calc current day of week from mg_time
-	let day_of_week = Math.floor((now % ( 86400 * 7 )) / 86400) + 4; // epoch is Thu
-	Log.print(Log.DEBUG, "run_sch: Now is " + JSON.stringify(min_of_day) + " minutes of day " + JSON.stringify(day_of_week) );
+	let day_of_week = Math.floor((local_now % ( 86400 * 7 )) / 86400) + 4; // epoch is Thu
+	Log.print(Log.DEBUG, "run_sch: Localized current time is " + JSON.stringify(min_of_day) + " minutes of day " + JSON.stringify(day_of_week) );
 
-	for (let count = 0; count < sch.length; count++ ) {
-		if (JSON.stringify(min_of_day) === JSON.stringify(sch[count].hour * 60 + sch[count].min)) {
-			Log.print(Log.INFO, '### run_sch: fire action: ' + sch[count].label);
-			set_switch(sch[count].value);
-			update_state();
-		}
-	}
+    if (sch_enable) {
+        for (let count = 0; count < sch.length; count++ ) {
+            if (JSON.stringify(min_of_day) === JSON.stringify(sch[count].hour * 60 + sch[count].min)) {
+                if (skip_once) {
+                    Log.print(Log.INFO, '### run_sch: skip once');
+                    skip_once = false;  // reset
+                } else {
+                    Log.print(Log.INFO, '### run_sch: fire action: ' + sch[count].label);
+                    set_switch(sch[count].value);
+                    update_state();
+                }
+            }
+        }
+    }
+
+    // check night mode schedule
+    if (nmEnabled) {
+        // Log.print(Log.INFO, 'check night mode schedule, current min of day: ' + JSON.stringify(min_of_day));
+        if (nmBeginMinOfDay > nmEndMinOfDay) { // e.g. 2300 - 0630
+            if ((min_of_day >= nmBeginMinOfDay) || (min_of_day < nmEndMinOfDay)) {
+                setNightMode(1);
+            } else {
+                setNightMode(0);
+            }
+        } else {  // e.g. 0800 - 1730
+            if ((min_of_day >= nmBeginMinOfDay) && (min_of_day < nmEndMinOfDay)) {
+                setNightMode(1);
+            } else {
+                setNightMode(0);
+            }
+        }
+    }
 };
 
 // sonoff button pressed */
@@ -180,9 +276,11 @@ MQTT.setEventHandler(function(conn, ev, edata) {
 
 // check sntp sync, to be replaced by sntp event handler after implemented by OS
 let clock_check_timer = Timer.set(30000 , true /* repeat */, function() {
-	if (Timer.now() > 1498867200 /* 2017-07-01 */) {
+	if (Timer.now() > 1575763200 /* 2018-12-08 */) {
 		clock_sync = true;
-		load_sch();
+        if (sch_enable) {
+            load_sch();
+        }		
 		Timer.del(clock_check_timer);
 		Log.print(Log.INFO, 'clock_check_timer: clock sync ok');
 	} else {
@@ -193,11 +291,11 @@ let clock_check_timer = Timer.set(30000 , true /* repeat */, function() {
 // timer loop to update state and run schedule jobs
 let main_loop_timer = Timer.set(1000 /* 1 sec */, true /* repeat */, function() {
   tick_count++;
-  if ( (tick_count % 60) === 0 ) {
+  if ( (tick_count % 60) === 0 ) { /* 1 min */
 	  if (clock_sync) run_sch();
   }
 
-  if ( (tick_count % 300) === 0 ) {
+  if ( (tick_count % 300) === 0 ) { /* 5 min */
 	  tick_count = 0;
       if (mqtt_connected) update_state();
   }

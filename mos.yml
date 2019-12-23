@@ -1,7 +1,7 @@
 name: openhab_sonoff_basic
 author: Michael Fung <hkuser2001@gmail.com>
 description: Sonoff Basic firmware to work with openHAB
-version: 1.1_20191205
+version: 1.1_20191223r3
 manifest_version: 2017-09-29
 
 libs_version: ${mos_version}
@@ -27,7 +27,6 @@ libs:
   - origin: https://github.com/mongoose-os-libs/vfs-dev-spi-flash
   - origin: https://github.com/mongoose-os-libs/mjs
   - origin: https://github.com/mongoose-os-libs/wifi
-  - origin: https://github.com/mongoose-os-libs/rpc-ws
   - origin: https://github.com/mongoose-os-libs/sntp
 
 config_schema:
@@ -38,6 +37,16 @@ config_schema:
   - ["wifi.ap.keep_enabled", false]
   - ["sntp.server", "192.168.0.254"]
   - ["debug.udp_log_addr", "192.168.0.1:514"]
+  - ["nm","o", {title: "Night Mode settings"}]
+  - ["nm.enable", "b", true, {title: "enable night mode?"}]
+  - ["nm.bh", "i", 15, {title: "begin hour"}]
+  - ["nm.bm", "i", 0, {title: "begin min"}]
+  - ["nm.eh", "i", 22, {title: "end hour"}]
+  - ["nm.em", "i", 30, {title: "end min"}]
+  - ["timer","o", {title: "Timer settings"}]
+  - ["timer.tz", "s", "+0800", {title: "time zone in UTC offset"}]
+  - ["timer.sch_enable", "b", true, {title: "enable schedules?"}]
+  - ["timer.skip_once", "b", false, {title: "skip next schedule once?"}]
 
 platform: esp8266
 build_vars:
