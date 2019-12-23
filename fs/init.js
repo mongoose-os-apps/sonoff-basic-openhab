@@ -1,3 +1,8 @@
+/*
+ * Logic for sonoff-basic-openhab
+ * Author: Michael Fung <hkuser2001 at the gmail service>
+*/
+
 // Load Mongoose OS API
 load('api_timer.js');
 load('api_gpio.js');
@@ -39,6 +44,10 @@ let mqtt_connected = false;
 let clock_sync = false;
 let relay_last_on_ts = null;
 let oncount = 0; // relay ON state duration
+let skip_once = false;  // skip next schedule for once
+
+// helper functions
+let str2int = ffi('int str2int(char *)');
 
 // init hardware
 GPIO.set_mode(relay_pin, GPIO.MODE_OUTPUT);
@@ -184,9 +193,14 @@ let run_sch = function () {
 
 	for (let count = 0; count < sch.length; count++ ) {
 		if (JSON.stringify(min_of_day) === JSON.stringify(sch[count].hour * 60 + sch[count].min)) {
-			Log.print(Log.INFO, '### run_sch: fire action: ' + sch[count].label);
-			set_switch(sch[count].value);
-			update_state();
+            if (skip_once) {
+                Log.print(Log.INFO, '### run_sch: skip once');
+                skip_once = false;  // reset
+            } else {
+                Log.print(Log.INFO, '### run_sch: fire action: ' + sch[count].label);
+                set_switch(sch[count].value);
+                update_state();
+            }
 		}
 	}
 

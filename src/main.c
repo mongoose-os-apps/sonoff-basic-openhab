@@ -68,10 +68,13 @@ static void mqtt_ev_handler(struct mg_connection *c, int ev, void *p, void *user
   (void) c;
 }
 
-enum mgos_app_init_result mgos_app_init(void) {
+// helper functions for ffi
+int str2int(char *c) {
+  return (int) strtol(c,NULL,0);
+}
 
-  int myint = strtol("12",NULL,0);
-  LOG(LL_INFO, ("TEST: %d", myint));
+
+enum mgos_app_init_result mgos_app_init(void) {
 
   mgos_gpio_set_mode(ON_BOARD_LED, MGOS_GPIO_MODE_OUTPUT);
   mgos_set_timer(200 /* ms */, true /* repeat */, blink_on_board_led_cb, NULL);
