@@ -30,7 +30,9 @@ load('api_rpc.js');
 let MG_EV_MQTT_CONNACK = 202;
 let MG_EV_CLOSE = 5;
 let thing_id = Cfg.get('mqtt.client_id');
-let hab_control_topic = 'sonoff_basic/' + thing_id;
+let hab_switch_topic = 'sonoff_basic/' + thing_id;
+let hab_skip_once_topic = 'sonoff_basic/' + thing_id + '/skip_once';
+let hab_sch_enable_topic = 'sonoff_basic/' + thing_id + '/sch_enable';
 let hab_state_topic = 'sonoff_basic/' + thing_id + '/state';
 let hab_link_topic = 'sonoff_basic/' + thing_id + '/link';
 let led_onboard = 13; // Sonoff LED pin
@@ -246,8 +248,8 @@ GPIO.set_button_handler(button_pin, GPIO.PULL_UP, GPIO.INT_EDGE_NEG, 500, functi
     update_state();
 }, true);
 
-MQTT.sub(hab_control_topic, function(conn, topic, command) {
-    Log.print(Log.DEBUG, 'rcvd ctrl msg:' + command);
+MQTT.sub(hab_switch_topic, function(conn, topic, command) {
+    Log.print(Log.DEBUG, 'rcvd sw ctrl msg:' + command);
 
     if ( command === 'ON' ) {
         set_switch(1);
@@ -256,6 +258,20 @@ MQTT.sub(hab_control_topic, function(conn, topic, command) {
     } else {
         Log.print(Log.ERROR, 'Unsupported command');
     }
+    update_state();
+}, null);
+
+MQTT.sub(hab_skip_once_topic, function(conn, topic, command) {
+    Log.print(Log.DEBUG, 'rcvd skip once msg:' + command);
+    skip_once = ( command === 'ON' ) ? true : false;
+    Cfg.set({timer: {skip_once: skip_once}});
+    update_state();
+}, null);
+
+MQTT.sub(hab_sch_enable_topic, function(conn, topic, command) {
+    Log.print(Log.DEBUG, 'rcvd skip once msg:' + command);
+    sch_enable = ( command === 'ON' ) ? true : false;
+    Cfg.set({timer: {sch_enable: sch_enable}});
     update_state();
 }, null);
 
