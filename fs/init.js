@@ -44,10 +44,22 @@ let mqtt_connected = false;
 let clock_sync = false;
 let relay_last_on_ts = null;
 let oncount = 0; // relay ON state duration
+let sch_enable = Cfg.get('timer.sch_enable');
 let skip_once = false;  // skip next schedule for once
 
 // helper functions
 let str2int = ffi('int str2int(char *)');
+
+// calc UTC offset
+// NOTE: str2int('08') gives 0
+let tz = Cfg.get('timer.tz');
+let tz_offset = 0; // in seconds
+let tz_sign = tz.slice(0,1);
+tz_offset = (str2int(tz.slice(1,2)) * 10 * 3600) + (str2int(tz.slice(2,3)) * 3600) + (str2int(tz.slice(3,5)) * 60);
+if (tz_sign === '-') {
+    tz_offset = tz_offset * -1;
+}
+Log.print(Log.INFO, 'Local time UTC offset: ' + JSON.stringify(tz_offset) + ' seconds');
 
 // init hardware
 GPIO.set_mode(relay_pin, GPIO.MODE_OUTPUT);
@@ -103,7 +115,7 @@ RPC.addHandler('NM.End', function(args) {
     return JSON.stringify({result: 'OK'});
 });
 
-// read timer schedules from a json file, must be in UTC
+// read timer schedules from a json file
 let sch = [];
 
 let load_sch = function() {
@@ -152,7 +164,9 @@ let update_state = function() {
         uptime: uptime,
         memory: Sys.free_ram(),
         relay_state: relay_value ? 'ON' : 'OFF',
-        oncount: Math.floor(oncount)
+        oncount: Math.floor(oncount),
+        skip_once: skip_once ? 'ON' : 'OFF',
+        sch_enable: sch_enable ? 'ON' : 'OFF'
     });
     let ok = MQTT.pub(hab_state_topic, pubmsg);
     Log.print(Log.INFO, 'Published:' + (ok ? 'OK' : 'FAIL') + ' topic:' + hab_state_topic + ' msg:' +  pubmsg);
@@ -184,25 +198,27 @@ let toggle_switch = function() {
 // check schedule and fire if time reached
 let run_sch = function () {
   Log.print(Log.DEBUG, 'switch schedules:' + JSON.stringify(sch));
-	let now = Math.floor(Timer.now());
+	let local_now = Math.floor(Timer.now()) + tz_offset;
 	// calc current time of day from mg_time
-	let min_of_day = Math.floor((now % 86400) / 60);
+	let min_of_day = Math.floor((local_now % 86400) / 60);
 	// calc current day of week from mg_time
-	let day_of_week = Math.floor((now % ( 86400 * 7 )) / 86400) + 4; // epoch is Thu
-	Log.print(Log.DEBUG, "run_sch: Now is " + JSON.stringify(min_of_day) + " minutes of day " + JSON.stringify(day_of_week) );
+	let day_of_week = Math.floor((local_now % ( 86400 * 7 )) / 86400) + 4; // epoch is Thu
+	Log.print(Log.DEBUG, "run_sch: Localized current time is " + JSON.stringify(min_of_day) + " minutes of day " + JSON.stringify(day_of_week) );
 
-	for (let count = 0; count < sch.length; count++ ) {
-		if (JSON.stringify(min_of_day) === JSON.stringify(sch[count].hour * 60 + sch[count].min)) {
-            if (skip_once) {
-                Log.print(Log.INFO, '### run_sch: skip once');
-                skip_once = false;  // reset
-            } else {
-                Log.print(Log.INFO, '### run_sch: fire action: ' + sch[count].label);
-                set_switch(sch[count].value);
-                update_state();
+    if (sch_enable) {
+        for (let count = 0; count < sch.length; count++ ) {
+            if (JSON.stringify(min_of_day) === JSON.stringify(sch[count].hour * 60 + sch[count].min)) {
+                if (skip_once) {
+                    Log.print(Log.INFO, '### run_sch: skip once');
+                    skip_once = false;  // reset
+                } else {
+                    Log.print(Log.INFO, '### run_sch: fire action: ' + sch[count].label);
+                    set_switch(sch[count].value);
+                    update_state();
+                }
             }
-		}
-	}
+        }
+    }
 
     // check night mode schedule
     if (nmEnabled) {
@@ -262,7 +278,9 @@ MQTT.setEventHandler(function(conn, ev, edata) {
 let clock_check_timer = Timer.set(30000 , true /* repeat */, function() {
 	if (Timer.now() > 1575763200 /* 2018-12-08 */) {
 		clock_sync = true;
-		load_sch();
+        if (sch_enable) {
+            load_sch();
+        }		
 		Timer.del(clock_check_timer);
 		Log.print(Log.INFO, 'clock_check_timer: clock sync ok');
 	} else {

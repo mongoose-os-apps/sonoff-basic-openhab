@@ -1,7 +1,7 @@
 name: openhab_sonoff_basic
 author: Michael Fung <hkuser2001@gmail.com>
 description: Sonoff Basic firmware to work with openHAB
-version: 1.1_20191223r1
+version: 1.1_20191223r3
 manifest_version: 2017-09-29
 
 libs_version: ${mos_version}
@@ -43,6 +43,10 @@ config_schema:
   - ["nm.bm", "i", 0, {title: "begin min"}]
   - ["nm.eh", "i", 22, {title: "end hour"}]
   - ["nm.em", "i", 30, {title: "end min"}]
+  - ["timer","o", {title: "Timer settings"}]
+  - ["timer.tz", "s", "+0800", {title: "time zone in UTC offset"}]
+  - ["timer.sch_enable", "b", true, {title: "enable schedules?"}]
+  - ["timer.skip_once", "b", false, {title: "skip next schedule once?"}]
 
 platform: esp8266
 build_vars:

@@ -70,7 +70,7 @@ static void mqtt_ev_handler(struct mg_connection *c, int ev, void *p, void *user
 
 // helper functions for ffi
 int str2int(char *c) {
-  return (int) strtol(c,NULL,0);
+  return (int) strtol(c,NULL,10);
 }
 
 
