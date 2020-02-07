@@ -13,6 +13,7 @@ load('api_log.js');
 load('api_math.js');
 load('api_file.js');
 load('api_rpc.js');
+load('api_events.js');
 
 /*
  * get event values, lookup mongoose.h:
@@ -27,15 +28,13 @@ load('api_rpc.js');
 */
 
 // define variables
-let MG_EV_MQTT_CONNACK = 202;
-let MG_EV_CLOSE = 5;
 let thing_id = Cfg.get('mqtt.client_id');
 let hab_switch_topic = 'sonoff_basic/' + thing_id;
 let hab_skip_once_topic = 'sonoff_basic/' + thing_id + '/skip_once';
 let hab_sch_enable_topic = 'sonoff_basic/' + thing_id + '/sch_enable';
 let hab_state_topic = 'sonoff_basic/' + thing_id + '/state';
 let hab_link_topic = 'sonoff_basic/' + thing_id + '/link';
-let led_onboard = 13; // Sonoff LED pin
+let led_pin = 13; // Sonoff LED pin
 let relay_pin = 12;  // Sonoff relay pin
 let spare_pin = 14;  // Sonoff not connected
 let button_pin = 0;  // Sonoff push button
@@ -51,6 +50,10 @@ let skip_once = false;  // skip next schedule for once
 
 // helper functions
 let str2int = ffi('int str2int(char *)');
+
+// sntp sync event:
+// ref: https://community.mongoose-os.com/t/add-sntp-synced-event/1208?u=michaelfung
+let MGOS_EVENT_TIME_CHANGED = Event.SYS + 3; 
 
 // calc UTC offset
 // NOTE: str2int('08') gives 0
@@ -71,13 +74,16 @@ GPIO.set_mode(spare_pin, GPIO.MODE_INPUT);
 GPIO.set_mode(button_pin, GPIO.MODE_INPUT);
 
 // night mode
-let _set_night_mode = ffi('void set_night_mode(int)');
 let setNightMode = function (val) {
     if (val > 0) {
-        _set_night_mode(1);
+        GPIO.blink(led_pin, 0, 0); // off, no blink
         Log.print(Log.DEBUG, 'Begin Night Mode');
     } else {
-        _set_night_mode(0);
+        if (mqtt_connected) {
+            GPIO.blink(led_pin, 2800, 200); // normal blink    
+        } else {
+            GPIO.blink(led_pin, 200, 200); // fast blink    
+        }        
         Log.print(Log.DEBUG, 'End Night Mode');
     }
 };
@@ -276,31 +282,32 @@ MQTT.sub(hab_sch_enable_topic, function (conn, topic, command) {
 }, null);
 
 MQTT.setEventHandler(function (conn, ev, edata) {
-    if (ev === MG_EV_MQTT_CONNACK) {
+    if (ev === MQTT.EV_CONNACK) {
         mqtt_connected = true;
+        GPIO.blink(led_pin, 2800, 200); // normal blink
         Log.print(Log.INFO, 'MQTT connected');
         // publish to the online topic
         let ok = MQTT.pub(hab_link_topic, 'ON');
         Log.print(Log.INFO, 'pub_online_topic:' + (ok ? 'OK' : 'FAIL') + ', msg: ON');
         update_state();
     }
-    else if (ev === MG_EV_CLOSE) {
+    else if (ev === MQTT.EV_CLOSE) {
         mqtt_connected = false;
+        GPIO.blink(led_pin, 200, 200); // fast blink
         Log.print(Log.ERROR, 'MQTT disconnected');
     }
 }, null);
 
-// check sntp sync, to be replaced by sntp event handler after implemented by OS
-let clock_check_timer = Timer.set(30000, true /* repeat */, function () {
-    if (Timer.now() > 1575763200 /* 2018-12-08 */) {
-        clock_sync = true;
+// set clock sync flag
+Event.addHandler(MGOS_EVENT_TIME_CHANGED, function (ev, evdata, ud) {
+    if (Timer.now() > 1577836800 /* 2020-01-01 */) {
+        clock_sync = true;        
+        Log.print(Log.INFO, 'mgos clock event: clock sync ok');
         if (sch_enable) {
             load_sch();
-        }
-        Timer.del(clock_check_timer);
-        Log.print(Log.INFO, 'clock_check_timer: clock sync ok');
+        }                
     } else {
-        Log.print(Log.INFO, 'clock_check_timer: clock not sync yet');
+        Log.print(Log.INFO, 'mgos clock event: clock not sync yet');
     }
 }, null);
 
@@ -316,5 +323,9 @@ let main_loop_timer = Timer.set(1000 /* 1 sec */, true /* repeat */, function ()
         if (mqtt_connected) update_state();
     }
 }, null);
+
+// default: fast blink
+GPIO.setup_output(led_pin, 1); 
+GPIO.blink(led_pin, 200, 200);
 
 Log.print(Log.WARN, "### init script started ###");

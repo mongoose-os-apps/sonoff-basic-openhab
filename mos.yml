@@ -1,7 +1,7 @@
 name: openhab_sonoff_basic
 author: Michael Fung <hkuser2001@gmail.com>
 description: Sonoff Basic firmware to work with openHAB
-version: 1.1_20200207r1
+version: 1.1_20200207r2
 manifest_version: 2017-09-29
 
 libs_version: ${mos_version}
@@ -39,9 +39,9 @@ config_schema:
   - ["debug.udp_log_addr", "192.168.0.1:514"]
   - ["nm","o", {title: "Night Mode settings"}]
   - ["nm.enable", "b", true, {title: "enable night mode?"}]
-  - ["nm.bh", "i", 15, {title: "begin hour"}]
+  - ["nm.bh", "i", 23, {title: "begin hour"}]
   - ["nm.bm", "i", 0, {title: "begin min"}]
-  - ["nm.eh", "i", 22, {title: "end hour"}]
+  - ["nm.eh", "i", 6, {title: "end hour"}]
   - ["nm.em", "i", 30, {title: "end min"}]
   - ["timer","o", {title: "Timer settings"}]
   - ["timer.tz", "s", "+0800", {title: "time zone in UTC offset"}]
