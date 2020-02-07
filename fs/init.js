@@ -56,8 +56,8 @@ let str2int = ffi('int str2int(char *)');
 // NOTE: str2int('08') gives 0
 let tz = Cfg.get('timer.tz');
 let tz_offset = 0; // in seconds
-let tz_sign = tz.slice(0,1);
-tz_offset = (str2int(tz.slice(1,2)) * 10 * 3600) + (str2int(tz.slice(2,3)) * 3600) + (str2int(tz.slice(3,5)) * 60);
+let tz_sign = tz.slice(0, 1);
+tz_offset = (str2int(tz.slice(1, 2)) * 10 * 3600) + (str2int(tz.slice(2, 3)) * 3600) + (str2int(tz.slice(3, 5)) * 60);
 if (tz_sign === '-') {
     tz_offset = tz_offset * -1;
 }
@@ -72,7 +72,7 @@ GPIO.set_mode(button_pin, GPIO.MODE_INPUT);
 
 // night mode
 let _set_night_mode = ffi('void set_night_mode(int)');
-let setNightMode = function(val) {
+let setNightMode = function (val) {
     if (val > 0) {
         _set_night_mode(1);
         Log.print(Log.DEBUG, 'Begin Night Mode');
@@ -104,63 +104,63 @@ if (nmEnabled) {
 }
 
 // set RPC command to begin night mode
-RPC.addHandler('NM.Begin', function(args) {
+RPC.addHandler('NM.Begin', function (args) {
     // no args parsing required
     setNightMode(1);
-    return JSON.stringify({result: 'OK'});
+    return JSON.stringify({ result: 'OK' });
 });
 
 // set RPC command to end night mode
-RPC.addHandler('NM.End', function(args) {
+RPC.addHandler('NM.End', function (args) {
     // no args parsing required
     setNightMode(0);
-    return JSON.stringify({result: 'OK'});
+    return JSON.stringify({ result: 'OK' });
 });
 
 // read timer schedules from a json file
 let sch = [];
 
-let load_sch = function() {
-	sch = [];  // reset sch
-	let ok = false;
-	let schedules = File.read('schedules.json');
-	if ( schedules !== null) {
-	  let sch_obj = JSON.parse(schedules);
-	  if (sch_obj !== null) {
-		sch = sch_obj.sch;
-		ok = true;
-		Log.print(Log.INFO, 'loaded schedules from file:' + JSON.stringify(sch));
-	  } else {
-		Log.print(Log.ERROR, 'schedule file corrupted.');
-	  }
-	} else {
-	  Log.print(Log.ERROR, 'schedule file missing.');
-	}
-	return ok;
+let load_sch = function () {
+    sch = [];  // reset sch
+    let ok = false;
+    let schedules = File.read('schedules.json');
+    if (schedules !== null) {
+        let sch_obj = JSON.parse(schedules);
+        if (sch_obj !== null) {
+            sch = sch_obj.sch;
+            ok = true;
+            Log.print(Log.INFO, 'loaded schedules from file:' + JSON.stringify(sch));
+        } else {
+            Log.print(Log.ERROR, 'schedule file corrupted.');
+        }
+    } else {
+        Log.print(Log.ERROR, 'schedule file missing.');
+    }
+    return ok;
 };
 
 
 // set RPC command to reload schedule timer
 // call me after a new schedules.json file is put into the fs
-RPC.addHandler('ReloadSchedule', function(args) {
-     // no args parsing required
-     let response = {
-		result: load_sch() ? 'OK' : 'Failed'
-	 };
-     return JSON.stringify(response);
+RPC.addHandler('ReloadSchedule', function (args) {
+    // no args parsing required
+    let response = {
+        result: load_sch() ? 'OK' : 'Failed'
+    };
+    return JSON.stringify(response);
 });
 
 // notify server of switch state
-let update_state = function() {
-	let uptime = Sys.uptime();
-	if (relay_last_on_ts !== null) {
-		oncount += uptime - relay_last_on_ts;
-	}
-	if (relay_value) {
-		relay_last_on_ts = uptime;
-	} else {
-		relay_last_on_ts = null;
-	}
+let update_state = function () {
+    let uptime = Sys.uptime();
+    if (relay_last_on_ts !== null) {
+        oncount += uptime - relay_last_on_ts;
+    }
+    if (relay_value) {
+        relay_last_on_ts = uptime;
+    } else {
+        relay_last_on_ts = null;
+    }
 
     let pubmsg = JSON.stringify({
         uptime: uptime,
@@ -171,13 +171,13 @@ let update_state = function() {
         sch_enable: sch_enable ? 'ON' : 'OFF'
     });
     let ok = MQTT.pub(hab_state_topic, pubmsg);
-    Log.print(Log.INFO, 'Published:' + (ok ? 'OK' : 'FAIL') + ' topic:' + hab_state_topic + ' msg:' +  pubmsg);
+    Log.print(Log.INFO, 'Published:' + (ok ? 'OK' : 'FAIL') + ' topic:' + hab_state_topic + ' msg:' + pubmsg);
     if (ok) oncount = 0;  // reset ON counter, openHAB take care of statistics logic
 };
 
 // set switch with bounce protection
-let set_switch = function(value) {
-    if ( (Sys.uptime() - last_toggle ) > 2 ) {
+let set_switch = function (value) {
+    if ((Sys.uptime() - last_toggle) > 2) {
         GPIO.write(relay_pin, value);
         relay_value = value;
         last_toggle = Sys.uptime();
@@ -187,8 +187,8 @@ let set_switch = function(value) {
 };
 
 // toggle switch with bounce protection
-let toggle_switch = function() {
-    if ( (Sys.uptime() - last_toggle ) > 2 ) {
+let toggle_switch = function () {
+    if ((Sys.uptime() - last_toggle) > 2) {
         GPIO.toggle(relay_pin);
         relay_value = 1 - relay_value; // 0 1 toggle
         last_toggle = Sys.uptime();
@@ -199,16 +199,16 @@ let toggle_switch = function() {
 
 // check schedule and fire if time reached
 let run_sch = function () {
-  Log.print(Log.DEBUG, 'switch schedules:' + JSON.stringify(sch));
-	let local_now = Math.floor(Timer.now()) + tz_offset;
-	// calc current time of day from mg_time
-	let min_of_day = Math.floor((local_now % 86400) / 60);
-	// calc current day of week from mg_time
-	let day_of_week = Math.floor((local_now % ( 86400 * 7 )) / 86400) + 4; // epoch is Thu
-	Log.print(Log.DEBUG, "run_sch: Localized current time is " + JSON.stringify(min_of_day) + " minutes of day " + JSON.stringify(day_of_week) );
+    Log.print(Log.DEBUG, 'switch schedules:' + JSON.stringify(sch));
+    let local_now = Math.floor(Timer.now()) + tz_offset;
+    // calc current time of day from mg_time
+    let min_of_day = Math.floor((local_now % 86400) / 60);
+    // calc current day of week from mg_time
+    let day_of_week = Math.floor((local_now % (86400 * 7)) / 86400) + 4; // epoch is Thu
+    Log.print(Log.DEBUG, "run_sch: Localized current time is " + JSON.stringify(min_of_day) + " minutes of day " + JSON.stringify(day_of_week));
 
     if (sch_enable) {
-        for (let count = 0; count < sch.length; count++ ) {
+        for (let count = 0; count < sch.length; count++) {
             if (JSON.stringify(min_of_day) === JSON.stringify(sch[count].hour * 60 + sch[count].min)) {
                 if (skip_once) {
                     Log.print(Log.INFO, '### run_sch: skip once');
@@ -242,18 +242,18 @@ let run_sch = function () {
 };
 
 // sonoff button pressed */
-GPIO.set_button_handler(button_pin, GPIO.PULL_UP, GPIO.INT_EDGE_NEG, 500, function(x) {
+GPIO.set_button_handler(button_pin, GPIO.PULL_UP, GPIO.INT_EDGE_NEG, 500, function (x) {
     Log.print(Log.DEBUG, 'button pressed');
     toggle_switch();
     update_state();
 }, true);
 
-MQTT.sub(hab_switch_topic, function(conn, topic, command) {
+MQTT.sub(hab_switch_topic, function (conn, topic, command) {
     Log.print(Log.DEBUG, 'rcvd sw ctrl msg:' + command);
 
-    if ( command === 'ON' ) {
+    if (command === 'ON') {
         set_switch(1);
-    } else if ( command === 'OFF' ) {
+    } else if (command === 'OFF') {
         set_switch(0);
     } else {
         Log.print(Log.ERROR, 'Unsupported command');
@@ -261,27 +261,27 @@ MQTT.sub(hab_switch_topic, function(conn, topic, command) {
     update_state();
 }, null);
 
-MQTT.sub(hab_skip_once_topic, function(conn, topic, command) {
+MQTT.sub(hab_skip_once_topic, function (conn, topic, command) {
     Log.print(Log.DEBUG, 'rcvd skip once msg:' + command);
-    skip_once = ( command === 'ON' ) ? true : false;
-    Cfg.set({timer: {skip_once: skip_once}});
+    skip_once = (command === 'ON') ? true : false;
+    Cfg.set({ timer: { skip_once: skip_once } });
     update_state();
 }, null);
 
-MQTT.sub(hab_sch_enable_topic, function(conn, topic, command) {
+MQTT.sub(hab_sch_enable_topic, function (conn, topic, command) {
     Log.print(Log.DEBUG, 'rcvd skip once msg:' + command);
-    sch_enable = ( command === 'ON' ) ? true : false;
-    Cfg.set({timer: {sch_enable: sch_enable}});
+    sch_enable = (command === 'ON') ? true : false;
+    Cfg.set({ timer: { sch_enable: sch_enable } });
     update_state();
 }, null);
 
-MQTT.setEventHandler(function(conn, ev, edata) {
+MQTT.setEventHandler(function (conn, ev, edata) {
     if (ev === MG_EV_MQTT_CONNACK) {
         mqtt_connected = true;
         Log.print(Log.INFO, 'MQTT connected');
         // publish to the online topic
-		let ok = MQTT.pub(hab_link_topic, 'ON');
-		Log.print(Log.INFO, 'pub_online_topic:' + (ok ? 'OK' : 'FAIL') + ', msg: ON');
+        let ok = MQTT.pub(hab_link_topic, 'ON');
+        Log.print(Log.INFO, 'pub_online_topic:' + (ok ? 'OK' : 'FAIL') + ', msg: ON');
         update_state();
     }
     else if (ev === MG_EV_CLOSE) {
@@ -291,30 +291,30 @@ MQTT.setEventHandler(function(conn, ev, edata) {
 }, null);
 
 // check sntp sync, to be replaced by sntp event handler after implemented by OS
-let clock_check_timer = Timer.set(30000 , true /* repeat */, function() {
-	if (Timer.now() > 1575763200 /* 2018-12-08 */) {
-		clock_sync = true;
+let clock_check_timer = Timer.set(30000, true /* repeat */, function () {
+    if (Timer.now() > 1575763200 /* 2018-12-08 */) {
+        clock_sync = true;
         if (sch_enable) {
             load_sch();
-        }		
-		Timer.del(clock_check_timer);
-		Log.print(Log.INFO, 'clock_check_timer: clock sync ok');
-	} else {
-		Log.print(Log.INFO, 'clock_check_timer: clock not sync yet');
-	}
+        }
+        Timer.del(clock_check_timer);
+        Log.print(Log.INFO, 'clock_check_timer: clock sync ok');
+    } else {
+        Log.print(Log.INFO, 'clock_check_timer: clock not sync yet');
+    }
 }, null);
 
 // timer loop to update state and run schedule jobs
-let main_loop_timer = Timer.set(1000 /* 1 sec */, true /* repeat */, function() {
-  tick_count++;
-  if ( (tick_count % 60) === 0 ) { /* 1 min */
-	  if (clock_sync) run_sch();
-  }
+let main_loop_timer = Timer.set(1000 /* 1 sec */, true /* repeat */, function () {
+    tick_count++;
+    if ((tick_count % 60) === 0) { /* 1 min */
+        if (clock_sync) run_sch();
+    }
 
-  if ( (tick_count % 300) === 0 ) { /* 5 min */
-	  tick_count = 0;
-      if (mqtt_connected) update_state();
-  }
+    if ((tick_count % 300) === 0) { /* 5 min */
+        tick_count = 0;
+        if (mqtt_connected) update_state();
+    }
 }, null);
 
 Log.print(Log.WARN, "### init script started ###");
