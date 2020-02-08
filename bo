@@ -1,3 +1,5 @@
+# build only
+
 mos build --local \
   --deps-dir $DEPS_DIR --binary-libs-dir $LIBS_DIR \
   --platform esp8266

@@ -1,3 +1,5 @@
+# configure dev board
+
 DEV_ID="sb-01"
 
 mos config-set \
