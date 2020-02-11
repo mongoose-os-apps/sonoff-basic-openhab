@@ -176,7 +176,7 @@ let update_state = function () {
         skip_once: skip_once ? 'ON' : 'OFF',
         sch_enable: sch_enable ? 'ON' : 'OFF'
     });
-    let ok = MQTT.pub(hab_state_topic, pubmsg);
+    let ok = MQTT.pub(hab_state_topic, pubmsg, 1, 1);
     Log.print(Log.INFO, 'Published:' + (ok ? 'OK' : 'FAIL') + ' topic:' + hab_state_topic + ' msg:' + pubmsg);
     if (ok) oncount = 0;  // reset ON counter, openHAB take care of statistics logic
 };
@@ -286,8 +286,8 @@ MQTT.setEventHandler(function (conn, ev, edata) {
         mqtt_connected = true;
         GPIO.blink(led_pin, 2800, 200); // normal blink
         Log.print(Log.INFO, 'MQTT connected');
-        // publish to the online topic
-        let ok = MQTT.pub(hab_link_topic, 'ON');
+        // publish to the online topic        
+        let ok = MQTT.pub(hab_link_topic, 'ON', 1, 1); // qos=1, retain=1(true)
         Log.print(Log.INFO, 'pub_online_topic:' + (ok ? 'OK' : 'FAIL') + ', msg: ON');
         update_state();
     }
