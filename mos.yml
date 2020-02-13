@@ -1,7 +1,7 @@
 name: openhab_sonoff_basic
 author: Michael Fung <hkuser2001@gmail.com>
 description: Sonoff Basic firmware to work with openHAB
-version: 1.1_20200207r2
+version: 1.1_20200213r1
 manifest_version: 2017-09-29
 
 libs_version: ${mos_version}
@@ -31,7 +31,9 @@ libs:
 
 config_schema:
   - ["mqtt.enable", true]
-  - ["mqtt.server", "hab2.lan:1883"]
+  - ["mqtt.server", "openhab.lan:1883"]
+  - ["mqtt.will_message", "OFF"]
+  - ["mqtt.will_retain", true]
   - ["wifi.ap.enable", false]
   - ["wifi.sta.enable", true]
   - ["wifi.ap.keep_enabled", false]
@@ -49,8 +51,10 @@ config_schema:
   - ["timer.skip_once", "b", false, {title: "skip next schedule once?"}]
 
 platform: esp8266
-build_vars:
-  # sonoff basic has 1MBytes flash only
-  FLASH_SIZE: 1048576
-  BOARD: esp8266-1M
+
+# moved to build script to make using nodemcu easier
+#build_vars:
+  ## sonoff basic has 1MBytes flash only
+  #FLASH_SIZE: 1048576
+  #BOARD: esp8266-1M
 

@@ -1,0 +1,3 @@
+# upload manual version of init.js to dev board
+
+mos --port "http://sb-01.lan/rpc" put manual/init.js

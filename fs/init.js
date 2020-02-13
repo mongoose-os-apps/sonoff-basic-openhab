@@ -15,18 +15,6 @@ load('api_file.js');
 load('api_rpc.js');
 load('api_events.js');
 
-/*
- * get event values, lookup mongoose.h:
- *
- * #define MG_MQTT_CMD_CONNACK 2
- * #define MG_MQTT_EVENT_BASE 200
- *
- * #define MG_EV_CLOSE 5
- *
- * #define MG_EV_MQTT_CONNACK (MG_MQTT_EVENT_BASE + MG_MQTT_CMD_CONNACK)
- *
-*/
-
 // define variables
 let thing_id = Cfg.get('mqtt.client_id');
 let hab_switch_topic = 'sonoff_basic/' + thing_id;
