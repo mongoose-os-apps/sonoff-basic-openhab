@@ -1,6 +1,6 @@
-# config test homie sonoff_basic
+# config test sonoff_basic
 
-DEV_ID="sb-02"
+DEV_ID="sb-03"
 
 mos config-set \
   device.id="${DEV_ID}" \
