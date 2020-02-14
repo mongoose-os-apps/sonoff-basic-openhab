@@ -17,13 +17,13 @@ load('api_events.js');
 
 // helpers
 // (convert A-Z to a-z)
-let tolowercase = function(s) {
+let tolowercase = function (s) {
     let ls = '';
     for (let i = 0; i < s.length; i++) {
-	let ch = s.at(i);
-	if(ch >= 0x41 && ch <= 0x5A)
-	    ch |= 0x20;
-	ls += chr(ch);
+        let ch = s.at(i);
+        if (ch >= 0x41 && ch <= 0x5A)
+            ch |= 0x20;
+        ls += chr(ch);
     }
     return ls;
 };
@@ -32,14 +32,14 @@ let str2int = ffi('int str2int(char *)');
 // mqtt pub wrapper
 let publish = function (topic, msg) {
     let ok = MQTT.pub(topic, msg, 1, true);	// QoS = 1, retain
-    Log.print(Log.INFO, 'Published:' + (ok ? 'OK' : 'FAIL') + ' topic:' + topic + ' msg:' +  msg);
+    Log.print(Log.INFO, 'Published:' + (ok ? 'OK' : 'FAIL') + ' topic:' + topic + ' msg:' + msg);
     return ok;
 };
 
 
 // define variables
 let client_id = Cfg.get('device.id');
-let thing_id = tolowercase(client_id.slice(client_id.length-6, client_id.length));
+let thing_id = tolowercase(client_id.slice(client_id.length - 6, client_id.length));
 let led_pin = 13; // Sonoff LED pin
 let relay_pin = 12;  // Sonoff relay pin
 let spare_pin = 14;  // Sonoff not connected
@@ -59,15 +59,21 @@ let base_topic = 'homie/' + thing_id;
 let state_topic = base_topic + '/$state';
 let stats_topic = base_topic + '/$stats';
 let relay_state_topic = base_topic + '/relay/state';
-let relay_control_topic = relay_state_topic + '/set';
-let system_state_topic = base_topic + '/system/state';
+//let relay_state_control_topic = relay_state_topic + '/set';
+let relay_skip_topic = base_topic + '/relay/skip';
+//let relay_skip_control_topic = base_topic + '/relay/skip';
+let relay_ensch_topic = base_topic + '/relay/ensch';
+let relay_oncount_topic = base_topic + '/relay/oncount';
+
+let system_uptime_topic = base_topic + '/system/uptime';
+let system_ram_topic = base_topic + '/system/ram';
 
 // homie-required last will
-if(Cfg.get('mqtt.will_topic') !== state_topic) {
-	Cfg.set({mqtt: {will_topic: state_topic}});
-	Cfg.set({mqtt: {will_message: 'lost'}});
-	Cfg.set({mqtt: {client_id: client_id}});
-	Log.print(Log.INFO, 'MQTT last will has been updated');
+if (Cfg.get('mqtt.will_topic') !== state_topic) {
+    Cfg.set({ mqtt: { will_topic: state_topic } });
+    Cfg.set({ mqtt: { will_message: 'lost' } });
+    Cfg.set({ mqtt: { client_id: client_id } });
+    Log.print(Log.INFO, 'MQTT last will has been updated');
 };
 
 let homie_init = function () {
@@ -75,29 +81,51 @@ let homie_init = function () {
     publish(base_topic + '/$homie', '4.0.0');
     publish(base_topic + '/$name', 'Sonoff Basic (Homie Edition)');
     publish(base_topic + '/$extensions', '');
-//    publish(base_topic + '/$extensions', 'org.homie.legacy-stats:0.1.1:[4.x]');
-//    publish(stats_topic + '/interval', 0);	// OH2.4-friendly
+    //    publish(base_topic + '/$extensions', 'org.homie.legacy-stats:0.1.1:[4.x]');
+    //    publish(stats_topic + '/interval', 0);	// OH2.4-friendly
     publish(base_topic + '/$nodes', 'relay,system');
     publish(base_topic + '/relay/$name', 'relay');
     publish(base_topic + '/relay/$type', 'on/off');
-    publish(base_topic + '/relay/$properties', 'state');
+    publish(base_topic + '/relay/$properties', 'state,skip,ensch,oncount');
+
     publish(base_topic + '/relay/state/$name', 'Relay state');
     publish(base_topic + '/relay/state/$datatype', 'boolean');
     publish(base_topic + '/relay/state/$settable', 'true');
+    publish(base_topic + '/relay/state/$retained', 'false');
+
+    publish(base_topic + '/relay/skip/$name', 'Skip next schedule');
+    publish(base_topic + '/relay/skip/$datatype', 'boolean');
+    publish(base_topic + '/relay/skip/$settable', 'true');
+    publish(base_topic + '/relay/skip/$retained', 'false');
+
+    publish(base_topic + '/relay/ensch/$name', 'Enable schedule');
+    publish(base_topic + '/relay/ensch/$datatype', 'boolean');
+    publish(base_topic + '/relay/ensch/$settable', 'true');
+    publish(base_topic + '/relay/ensch/$retained', 'false');
+
+    publish(base_topic + '/relay/oncount/$name', 'On count');
+    publish(base_topic + '/relay/oncount/$datatype', 'integer');
+    //publish(base_topic + '/relay/oncount/$settable', 'false');
+    publish(base_topic + '/relay/oncount/$retained', 'false');
 
     publish(base_topic + '/system/$name', 'system');
     publish(base_topic + '/system/$type', 'system');
-    publish(base_topic + '/system/$properties', 'state');
-    publish(base_topic + '/system/state/$name', 'system state');
-    publish(base_topic + '/system/state/$datatype', 'string');
-    publish(base_topic + '/system/state/$settable', 'false');
+    publish(base_topic + '/system/$properties', 'uptime,ram');
+
+    publish(base_topic + '/system/uptime/$name', 'Uptime');
+    publish(base_topic + '/system/uptime/$datatype', 'integer');
+    //publish(base_topic + '/system/uptime/$settable', 'false');
+
+    publish(base_topic + '/system/ram/$name', 'Free RAM');
+    publish(base_topic + '/system/ram/$datatype', 'integer');
+    //publish(base_topic + '/system/ram/$settable', 'false');
 
     publish(state_topic, 'ready');
 };
 
 // sntp sync event:
 // ref: https://community.mongoose-os.com/t/add-sntp-synced-event/1208?u=michaelfung
-let MGOS_EVENT_TIME_CHANGED = Event.SYS + 3; 
+let MGOS_EVENT_TIME_CHANGED = Event.SYS + 3;
 
 // calc UTC offset
 // NOTE: str2int('08') gives 0
@@ -127,7 +155,7 @@ let setNightMode = function (val) {
             GPIO.blink(led_pin, 2800, 200); // normal blink    
         } else {
             GPIO.blink(led_pin, 200, 200); // fast blink    
-        }        
+        }
         Log.print(Log.DEBUG, 'End Night Mode');
     }
 };
@@ -203,6 +231,9 @@ RPC.addHandler('ReloadSchedule', function (args) {
 // notify server of switch state
 let update_state = function () {
     let uptime = Sys.uptime();
+    let ok = false;
+
+    // calc oncount
     if (relay_last_on_ts !== null) {
         oncount += uptime - relay_last_on_ts;
     }
@@ -212,6 +243,7 @@ let update_state = function () {
         relay_last_on_ts = null;
     }
 
+    /*
     let pubmsg = JSON.stringify({
         uptime: uptime,
         memory: Sys.free_ram(),
@@ -220,16 +252,26 @@ let update_state = function () {
         skip_once: skip_once ? 'ON' : 'OFF',
         sch_enable: sch_enable ? 'ON' : 'OFF'
     });
-        
-    let ok = MQTT.pub(system_state_topic, pubmsg);
-    Log.print(Log.INFO, 'Publish system state ' + (ok ? 'OK' : 'FAIL') + ' msg: ' + pubmsg);
+    */
+
+    //ok = MQTT.pub(system_state_topic, pubmsg);
+    //Log.print(Log.INFO, 'Publish system state ' + (ok ? 'OK' : 'FAIL') + ' msg: ' + pubmsg);
+
+    ok = publish(relay_state_topic, relay_value ? 'true' : 'false');
+    Log.print(Log.INFO, 'Publish relay state ' + (ok ? 'OK' : 'FAILED'));
+
+    ok = publish(relay_skip_topic, skip_once ? 'true' : 'false');
+    Log.print(Log.INFO, 'Publish relay skip ' + (ok ? 'OK' : 'FAILED'));
     
-    let ok = publish(relay_state_topic, relay_value ? 'true' : 'false');
-    Log.print(Log.INFO, 'Publish relay state ' + (ok ? 'OK' : 'FAILED') );
+    ok = publish(relay_ensch_topic, sch_enable ? 'true' : 'false');
+    Log.print(Log.INFO, 'Publish relay ensch ' + (ok ? 'OK' : 'FAILED'));
     
-    // if publish system state ok then
-    // oncount = 0;     
-    //end if
+    ok = publish(relay_oncount_topic, JSON.stringify(Math.floor(oncount)));
+    Log.print(Log.INFO, 'Publish relay oncount ' + (ok ? 'OK' : 'FAILED'));
+    if (ok) {
+        oncount = 0;     
+    }
+    
 };
 
 // set switch with bounce protection
@@ -305,26 +347,47 @@ GPIO.set_button_handler(button_pin, GPIO.PULL_UP, GPIO.INT_EDGE_NEG, 500, functi
     update_state();
 }, true);
 
-MQTT.sub(relay_control_topic, function (conn, topic, msg) {
-    Log.print(Log.INFO, 'rcvd relay_control_topic msg:' + msg);
+MQTT.sub(base_topic + '/relay/+/set', function (conn, topic, msg) {
+    Log.print(Log.INFO, 'rcvd set topic: <' + topic + '> msg: ' + msg);
+
+    if (topic.indexOf('state') !== -1) {  // relay state
         if (msg === 'true') {
             set_switch(1);
         } else if (msg === 'false') {
             set_switch(0);
         } else {
-            Log.print(Log.ERROR, 'Unsupported relay control command: ' +  msg);
+            Log.print(Log.ERROR, 'Unsupported command: ' + msg);
+            return;
         }
-        update_state();    
-}, null);
-
-/*
-MQTT.sub(hab_skip_once_topic, function (conn, topic, command) {
-    Log.print(Log.DEBUG, 'rcvd skip once msg:' + command);
-    skip_once = (command === 'ON') ? true : false;
-    Cfg.set({ timer: { skip_once: skip_once } });
+    }
+    else if (topic.indexOf('skip') !== -1) {  // skip next sch
+        if (msg === 'true') {
+            skip_once = true;
+        } else if (msg === 'false') {
+            skip_once = false;
+        } else {
+            Log.print(Log.ERROR, 'Unsupported command: ' + msg);
+            return;
+        }
+        Cfg.set({ timer: { skip_once: skip_once } });
+    }
+    else if (topic.indexOf('ensch') !== -1) {  // enable sch
+        if (msg === 'true') {
+            sch_enable = true;
+        } else if (msg === 'false') {
+            sch_enable = false;
+        } else {
+            Log.print(Log.ERROR, 'Unsupported command: ' + msg);
+            return;
+        }
+        Cfg.set({ timer: { sch_enable: sch_enable } });
+    }
+    else {
+        Log.print(Log.ERROR, 'Unsupported topic');
+        return;
+    }
     update_state();
 }, null);
-*/
 
 MQTT.setEventHandler(function (conn, ev, edata) {
     if (ev === MQTT.EV_CONNACK) {
@@ -345,11 +408,11 @@ MQTT.setEventHandler(function (conn, ev, edata) {
 // set clock sync flag
 Event.addHandler(MGOS_EVENT_TIME_CHANGED, function (ev, evdata, ud) {
     if (Timer.now() > 1577836800 /* 2020-01-01 */) {
-        clock_sync = true;        
+        clock_sync = true;
         Log.print(Log.INFO, 'mgos clock event: clock sync ok');
         if (sch_enable) {
             load_sch();
-        }                
+        }
     } else {
         Log.print(Log.INFO, 'mgos clock event: clock not sync yet');
     }
@@ -369,7 +432,7 @@ let main_loop_timer = Timer.set(1000 /* 1 sec */, true /* repeat */, function ()
 }, null);
 
 // default: fast blink
-GPIO.setup_output(led_pin, 1); 
+GPIO.setup_output(led_pin, 1);
 GPIO.blink(led_pin, 200, 200);
 
 Log.print(Log.WARN, "### init script started ###");

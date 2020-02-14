@@ -1,0 +1,17 @@
+// Item Syntax:
+//
+// itemtype itemname "labeltext [stateformat]" <iconname> (group1, group2, ...) ["tag1", "tag2", ...] {bindingconfig}
+//
+
+Switch TestBoard_Relay "Light Switch" {channel="mqtt:topic:local-broker:TestBoard:Relay"}
+Number TestBoard_RAM "Free RAM" {channel="mqtt:topic:local-broker:TestBoard:RAM"}
+String TestBoard_Uptime "Uptime" {channel="mqtt:topic:local-broker:TestBoard:Uptime"}
+Number TestBoard_OnCount "For stats calcuation" {channel="mqtt:topic:local-broker:TestBoard:OnCount"}
+Switch TestBoard_SkipOnce "Skip next schedule" {channel="mqtt:topic:local-broker:TestBoard:SkipOnce"}
+Switch TestBoard_SchEnable "Enable Schedule" {channel="mqtt:topic:local-broker:TestBoard:SchEnable"}
+Switch TestBoard_Link "Indictate connection state" {channel="mqtt:topic:local-broker:TestBoard:Link"}
+
+// rule data stuff:
+Number TestBoard_Usage "Daily switch ON time in minutes"
+Switch TestBoard_Health "Indictate device health"
+

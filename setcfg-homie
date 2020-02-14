@@ -4,7 +4,7 @@
 #THING_BASE="homie/${THING_ID}"
 
 mos config-set \
-  mqtt.max_queue_length=30
+  mqtt.max_queue_length=50
 
 #  device.id="${THING_ID}" \
 #  mqtt.client_id="${THING_ID}" \
