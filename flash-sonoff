@@ -1,0 +1,3 @@
+# flash to a sonoff basic with 1M flash
+
+mos flash --esp-flash-params "dout,8m,40m"

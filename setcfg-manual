@@ -1,4 +1,4 @@
-# configure dev board
+# configure dev board for manual
 
 DEV_ID="sb-01"
 

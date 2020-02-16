@@ -1,7 +1,0 @@
-# build and flash to sonoff basic with 1M flash
-
-mos build --local \
-  --deps-dir $DEPS_DIR --binary-libs-dir $LIBS_DIR \
-  --platform esp8266 \
-  --build-var FLASH_SIZE=1048576 --build-var BOARD=esp8266-1M \ 
-  && mos flash --esp-flash-params "dout,8m,40m"

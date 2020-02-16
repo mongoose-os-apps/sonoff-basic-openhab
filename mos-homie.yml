@@ -1,7 +1,7 @@
 name: openhab_sonoff_basic
 author: Michael Fung <hkuser2001@gmail.com>
-description: Sonoff Basic firmware for openHAB
-version: 1.1_20200216r1
+description: Sonoff Basic firmware to work with openHAB
+version: 1.1_20200214r1
 manifest_version: 2017-09-29
 
 libs_version: ${mos_version}
@@ -14,7 +14,7 @@ tags:
 sources:
   - src
 filesystem:
-  - manual/fs
+  - fs
 libs:
     # common mgos libs
   - origin: https://github.com/mongoose-os-libs/http-server
@@ -34,6 +34,8 @@ config_schema:
   - ["mqtt.server", "openhab.lan:1883"]
   - ["mqtt.will_message", "OFF"]
   - ["mqtt.will_retain", true]
+  # inc queue length for the many topics in homie init process:
+  - ["mqtt.max_queue_length", 50] 
   - ["wifi.ap.enable", false]
   - ["wifi.sta.enable", true]
   - ["wifi.ap.keep_enabled", false]
@@ -52,8 +54,9 @@ config_schema:
 
 platform: esp8266
 
-# moved to build script to make using nodemcu easier
+# moved to build script to make using nodemcu as dev board easier
 #build_vars:
   ## sonoff basic has 1MBytes flash only
   #FLASH_SIZE: 1048576
   #BOARD: esp8266-1M
+

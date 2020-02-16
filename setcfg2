@@ -1,8 +1,0 @@
-# config test sonoff_basic
-
-DEV_ID="sb-03"
-
-mos config-set \
-  device.id="${DEV_ID}" \
-  mqtt.client_id="${DEV_ID}" \
-  mqtt.will_topic="sonoff_basic/${DEV_ID}/link"

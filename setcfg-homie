@@ -1,5 +1,7 @@
 # configure dev board for homie
 
+echo "# this script is not needed anymore"
+
 #THING_ID="sb-02"
 #THING_BASE="homie/${THING_ID}"
 

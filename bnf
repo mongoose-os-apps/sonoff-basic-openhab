@@ -1,6 +1,0 @@
-# build and flash to developemnt board nodemcu with 4M flash
-
-mos build --local \
-  --deps-dir $DEPS_DIR --binary-libs-dir $LIBS_DIR \
-  --platform esp8266 \
-  && mos flash

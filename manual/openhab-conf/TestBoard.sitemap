@@ -1,0 +1,13 @@
+sitemap default label="My Sweet Home" {
+
+	Frame label="Test Board" {
+		Switch item=TestBoard_Relay label="Light Switch" icon="light"
+        Switch item=TestBoard_SkipOnce label="Skip next schedule" icon="settings"
+        Switch item=TestBoard_SchEnable label="Enable schedule" icon="settings"
+		Text item=TestBoard_RAM label="RAM Free [%d bytes]" icon="line-stagnation"
+		Text item=TestBoard_Uptime label="Uptime [%s]" icon="line-stagnation"
+		Text item=TestBoard_Usage label="ON Time today [%.0f min]" icon="line-stagnation"
+		Text item=TestBoard_Health label="Health" icon="network"
+        Text item=TestBoard_Link label="Link" icon="network"
+	}
+}
