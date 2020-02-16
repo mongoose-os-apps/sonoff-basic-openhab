@@ -91,7 +91,7 @@ let homie_init = function () {
     publish(base_topic + '/relay/state/$name', 'Relay state');
     publish(base_topic + '/relay/state/$datatype', 'boolean');
     publish(base_topic + '/relay/state/$settable', 'true');
-    publish(base_topic + '/relay/state/$retained', 'false');
+    publish(base_topic + '/relay/state/$retained', 'true');
 
     publish(base_topic + '/relay/skip/$name', 'Skip next schedule');
     publish(base_topic + '/relay/skip/$datatype', 'boolean');
