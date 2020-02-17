@@ -1,0 +1,16 @@
+// Item Syntax:
+//
+// itemtype itemname "labeltext [stateformat]" <iconname> (group1, group2, ...) ["tag1", "tag2", ...] {bindingconfig}
+//
+
+Switch BedroomSonoff_Relay "Light Switch" {channel="mqtt:topic:local-broker:BedroomSonoff:Relay"}
+Number BedroomSonoff_RAM "Free RAM" {channel="mqtt:topic:local-broker:BedroomSonoff:RAM"}
+String BedroomSonoff_Uptime "Uptime" {channel="mqtt:topic:local-broker:BedroomSonoff:Uptime"}
+Number BedroomSonoff_OnCount "For stats calcuation" {channel="mqtt:topic:local-broker:BedroomSonoff:OnCount"}
+Switch BedroomSonoff_SkipOnce "Skip next schedule" {channel="mqtt:topic:local-broker:BedroomSonoff:SkipOnce"}
+Switch BedroomSonoff_SchEnable "Enable Schedule" {channel="mqtt:topic:local-broker:BedroomSonoff:SchEnable"}
+Switch BedroomSonoff_Link "Indictate connection state" {channel="mqtt:topic:local-broker:BedroomSonoff:Link"}
+
+// rule data stuff:
+Number BedroomSonoff_Usage "Daily switch ON time in minutes"
+Switch BedroomSonoff_Health "Indictate device health"

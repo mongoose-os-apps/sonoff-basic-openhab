@@ -1,0 +1,13 @@
+sitemap default label="My Sweet Home" {
+
+	Frame label="Test Board" {
+		Switch item=BedroomSonoff_Relay label="Light Switch" icon="light"
+        Switch item=BedroomSonoff_SkipOnce label="Skip next schedule" icon="settings"
+        Switch item=BedroomSonoff_SchEnable label="Enable schedule" icon="settings"
+		Text item=BedroomSonoff_RAM label="RAM Free [%d bytes]" icon="line-stagnation"
+		Text item=BedroomSonoff_Uptime label="Uptime [%s]" icon="line-stagnation"
+		Text item=BedroomSonoff_Usage label="ON Time today [%.0f min]" icon="line-stagnation"
+		Text item=BedroomSonoff_Health label="Health" icon="network"
+        Text item=BedroomSonoff_Link label="Link" icon="network"
+	}
+}

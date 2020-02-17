@@ -1,7 +1,7 @@
 Bridge mqtt:broker:local-broker [ host="127.0.0.1", qos=1, secure=false, clientID="openhab-conf-files"] {
 
-    // define thing with ID "TestBoard"
-    Thing topic TestBoard "Sonoff Test Board" @ "Lab" {
+    // define thing with ID "BedroomSonoff"
+    Thing topic BedroomSonoff "Sonoff Basic" @ "Bedroom" {
 
         Channels:
             // channel ID is Relay, used to build unique path later in .items config
