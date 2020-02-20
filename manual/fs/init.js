@@ -35,13 +35,34 @@ let relay_last_on_ts = null;
 let oncount = 0; // relay ON state duration
 let sch_enable = Cfg.get('timer.sch_enable');
 let skip_once = false;  // skip next schedule for once
+let last_wifi_disconnected = 0; // or Sys.Uptime() if we sure can catch the first cconnected evt
+
+// WiFi Events
+
+// #define MGOS_WIFI_EV_BASE MGOS_EVENT_BASE('W', 'F', 'I')
+// #define MGOS_EVENT_GRP_WIFI MGOS_WIFI_EV_BASE
+
+// /* In the comment, the type of `void *ev_data` is specified */
+// enum mgos_wifi_event {
+//   MGOS_WIFI_EV_STA_DISCONNECTED =
+//       MGOS_WIFI_EV_BASE,            /* Arg: mgos_wifi_sta_disconnected_arg */
+//   MGOS_WIFI_EV_STA_CONNECTING,      /* Arg: NULL */
+//   MGOS_WIFI_EV_STA_CONNECTED,       /* Arg: mgos_wifi_sta_connected_arg */
+//   MGOS_WIFI_EV_STA_IP_ACQUIRED,     /* Arg: NULL */
+//   MGOS_WIFI_EV_AP_STA_CONNECTED,    /* Arg: mgos_wifi_ap_sta_connected_arg */
+//   MGOS_WIFI_EV_AP_STA_DISCONNECTED, /* Arg: mgos_wifi_ap_sta_disconnected_arg */
+// };
+Event.WIFI = Event.baseNumber('WFI');
+Event.MGOS_WIFI_EV_STA_DISCONNECTED = Event.WIFI;
+Event.MGOS_WIFI_EV_STA_CONNECTED = Event.WIFI + 2;
+Event.MGOS_WIFI_EV_STA_IP_ACQUIRED = Event.WIFI + 3;
 
 // helper functions
 let str2int = ffi('int str2int(char *)');
 
 // sntp sync event:
 // ref: https://community.mongoose-os.com/t/add-sntp-synced-event/1208?u=michaelfung
-let MGOS_EVENT_TIME_CHANGED = Event.SYS + 3; 
+let MGOS_EVENT_TIME_CHANGED = Event.SYS + 3;
 
 // calc UTC offset
 // NOTE: str2int('08') gives 0
@@ -71,7 +92,7 @@ let setNightMode = function (val) {
             GPIO.blink(led_pin, 2800, 200); // normal blink    
         } else {
             GPIO.blink(led_pin, 200, 200); // fast blink    
-        }        
+        }
         Log.print(Log.DEBUG, 'End Night Mode');
     }
 };
@@ -289,21 +310,42 @@ MQTT.setEventHandler(function (conn, ev, edata) {
 // set clock sync flag
 Event.addHandler(MGOS_EVENT_TIME_CHANGED, function (ev, evdata, ud) {
     if (Timer.now() > 1577836800 /* 2020-01-01 */) {
-        clock_sync = true;        
+        clock_sync = true;
         Log.print(Log.INFO, 'mgos clock event: clock sync ok');
         if (sch_enable) {
             load_sch();
-        }                
+        }
     } else {
         Log.print(Log.INFO, 'mgos clock event: clock not sync yet');
     }
 }, null);
 
+// set wifi disconect timer
+Event.addHandler(Event.MGOS_WIFI_EV_STA_DISCONNECTED, function (ev, evdata, ud) {
+    if (last_wifi_disconnected === 0) {  // this evt will fire if re-connect attempt fail
+        last_wifi_disconnected = Sys.uptime();
+        Log.print(Log.WARN, "### WiFi disconnected ###");
+    }    
+}, null);
+
+// reset wifi disconect timer
+Event.addHandler(Event.MGOS_WIFI_EV_STA_IP_ACQUIRED, function (ev, evdata, ud) {
+    last_wifi_disconnected = 0;
+    Log.print(Log.INFO, "Connected and got IP addr");
+}, null);
+
 // timer loop to update state and run schedule jobs
 let main_loop_timer = Timer.set(1000 /* 1 sec */, true /* repeat */, function () {
     tick_count++;
+
     if ((tick_count % 60) === 0) { /* 1 min */
         if (clock_sync) run_sch();
+        // lost network for too long?
+        if (last_wifi_disconnected > 0 && ((Sys.uptime() - last_wifi_disconnected) > 300)) {
+            // reboot to workaround wifi reconnect issue
+            Log.print(Log.WARN, "reboot to workaround wifi reconnect issue");
+            Sys.reboot(500); // reboot in 500 ms
+        }
     }
 
     if ((tick_count % 300) === 0) { /* 5 min */
@@ -313,7 +355,7 @@ let main_loop_timer = Timer.set(1000 /* 1 sec */, true /* repeat */, function ()
 }, null);
 
 // default: fast blink
-GPIO.setup_output(led_pin, 1); 
+GPIO.setup_output(led_pin, 1);
 GPIO.blink(led_pin, 200, 200);
 
 Log.print(Log.WARN, "### init script started ###");

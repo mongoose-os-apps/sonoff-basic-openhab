@@ -1,7 +1,7 @@
 name: openhab_sonoff_basic
 author: Michael Fung <hkuser2001@gmail.com>
 description: Sonoff Basic firmware to work with openHAB
-version: 1.1_20200214r1
+version: 1.1_20200219r1
 manifest_version: 2017-09-29
 
 libs_version: ${mos_version}
@@ -32,12 +32,13 @@ libs:
 config_schema:
   - ["mqtt.enable", true]
   - ["mqtt.server", "openhab.lan:1883"]
+  - ["mqtt.clean_session", false]
   - ["mqtt.will_message", "OFF"]
   - ["mqtt.will_retain", true]
   # inc queue length for the many topics in homie init process:
   - ["mqtt.max_queue_length", 50] 
-  - ["wifi.ap.enable", false]
-  - ["wifi.sta.enable", true]
+  #- ["wifi.ap.enable", false]
+  #- ["wifi.sta.enable", true]
   - ["wifi.ap.keep_enabled", false]
   - ["sntp.server", "192.168.0.254"]
   - ["debug.udp_log_addr", "192.168.0.1:514"]
