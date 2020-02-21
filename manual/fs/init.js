@@ -36,6 +36,7 @@ let oncount = 0; // relay ON state duration
 let sch_enable = Cfg.get('timer.sch_enable');
 let skip_once = false;  // skip next schedule for once
 let last_wifi_disconnected = 0; // or Sys.Uptime() if we sure can catch the first cconnected evt
+let long_press_timer = null;
 
 // WiFi Events
 
@@ -59,6 +60,7 @@ Event.MGOS_WIFI_EV_STA_IP_ACQUIRED = Event.WIFI + 3;
 
 // helper functions
 let str2int = ffi('int str2int(char *)');
+let reset_fw_defaults = ffi('void reset_firmware_defaults()');
 
 // sntp sync event:
 // ref: https://community.mongoose-os.com/t/add-sntp-synced-event/1208?u=michaelfung
@@ -261,6 +263,16 @@ GPIO.set_button_handler(button_pin, GPIO.PULL_UP, GPIO.INT_EDGE_NEG, 500, functi
     Log.print(Log.DEBUG, 'button pressed');
     toggle_switch();
     update_state();
+    if (long_press_timer !== null) {
+        Timer.del(long_press_timer);
+    }
+    long_press_timer = Timer.set(5000, 0, function () {
+        if (GPIO.read(button_pin) === 0) {
+            Log.print(Log.WARN, "### reset to firmware defaults initiated! ###");
+            reset_fw_defaults();
+        }
+        long_press_timer = null;
+    }, null);    
 }, true);
 
 MQTT.sub(hab_switch_topic, function (conn, topic, command) {
@@ -325,7 +337,7 @@ Event.addHandler(Event.MGOS_WIFI_EV_STA_DISCONNECTED, function (ev, evdata, ud) 
     if (last_wifi_disconnected === 0) {  // this evt will fire if re-connect attempt fail
         last_wifi_disconnected = Sys.uptime();
         Log.print(Log.WARN, "### WiFi disconnected ###");
-    }    
+    }
 }, null);
 
 // reset wifi disconect timer
@@ -357,5 +369,19 @@ let main_loop_timer = Timer.set(1000 /* 1 sec */, true /* repeat */, function ()
 // default: fast blink
 GPIO.setup_output(led_pin, 1);
 GPIO.blink(led_pin, 200, 200);
+
+// test long pressed using spare pin */
+// GPIO.set_button_handler(spare_pin, GPIO.PULL_UP, GPIO.INT_EDGE_NEG, 200, function (x) {
+//     Log.print(Log.INFO, 'spare button pressed');
+//     if (long_press_timer !== null) {
+//         Timer.del(long_press_timer);
+//     }
+//     long_press_timer = Timer.set(5000, 0, function () {
+//         if (GPIO.read(spare_pin) === 0) {
+//             Log.print(Log.INFO, "### reset to factory defaults initiated! ###");
+//         }
+//         long_press_timer = null;
+//     }, null);
+// }, null);
 
 Log.print(Log.WARN, "### init script started ###");
