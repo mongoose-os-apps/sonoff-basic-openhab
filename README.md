@@ -12,6 +12,8 @@ It targets to work with openHAB 2.4 or newer using the MQTT binding.
 * Device local schedule timer
 * Switch ON duration counter for energy consumption analysis
 * Night Mode to turn off status LED
+* Web interface for setting up WiFi SSID and password
+* Reset to firmware defaults with on board button
 
 ### Configuration options
 
@@ -56,7 +58,14 @@ Sonoff Basic has only 1Mbytes flash.
 
 	mos flash --esp-flash-params "dout,8m,40m"
 
-### Configuration
+### WiFi Setup
+
+1. Switch your PC or smartphone to the device's WiFi network. The SSID is named like **Sonoff_??????**,
+and the password is `Sonoff`.
+
+2. Use your browser open http://192.168.4.1/
+
+### openHAB Configuration
 
 If you choose the manual configration option, please check the `manual` folder.
 
@@ -81,3 +90,6 @@ Example: set night mode from 23:00 to 6:30:
     
 	mos config-set nm.enable=true nm.bh=23 nm.bm=0 nm.eh=6 nm.em=30
 
+### Reset to firmware defaults
+
+Press and hold the on board button for 5 seconds.

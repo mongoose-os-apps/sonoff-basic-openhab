@@ -1,7 +1,7 @@
 name: openhab_sonoff_basic
 author: Michael Fung <hkuser2001@gmail.com>
 description: Sonoff Basic firmware for openHAB
-version: 1.1_20200219r1
+version: 1.1_20200221r1
 manifest_version: 2017-09-29
 
 libs_version: ${mos_version}
@@ -34,6 +34,8 @@ config_schema:
   - ["mqtt.server", "openhab.lan:1883"]
   - ["mqtt.will_message", "OFF"]
   - ["mqtt.will_retain", true]
+  - ["wifi.ap.ssid", "Sonoff_??????"]
+  - ["wifi.ap.pass", "Sonoff"]
   #- ["wifi.ap.enable", false] # default is true
   #- ["wifi.sta.enable", true] # default is ???
   #- ["wifi.ap.keep_enabled", false] # default is true
