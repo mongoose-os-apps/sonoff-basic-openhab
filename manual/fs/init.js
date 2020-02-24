@@ -16,12 +16,7 @@ load('api_rpc.js');
 load('api_events.js');
 
 // define variables
-let thing_id = Cfg.get('mqtt.client_id');
-let hab_switch_topic = 'sonoff_basic/' + thing_id;
-let hab_skip_once_topic = 'sonoff_basic/' + thing_id + '/skip_once';
-let hab_sch_enable_topic = 'sonoff_basic/' + thing_id + '/sch_enable';
-let hab_state_topic = 'sonoff_basic/' + thing_id + '/state';
-let hab_link_topic = 'sonoff_basic/' + thing_id + '/link';
+
 let led_pin = 13; // Sonoff LED pin
 let relay_pin = 12;  // Sonoff relay pin
 let spare_pin = 14;  // Sonoff not connected
@@ -37,6 +32,35 @@ let sch_enable = Cfg.get('timer.sch_enable');
 let skip_once = false;  // skip next schedule for once
 let last_wifi_disconnected = 0; // or Sys.Uptime() if we sure can catch the first cconnected evt
 let long_press_timer = null;
+
+// (convert A-Z to a-z)
+let tolowercase = function (s) {
+    let ls = '';
+    for (let i = 0; i < s.length; i++) {
+        let ch = s.at(i);
+        if (ch >= 0x41 && ch <= 0x5A)
+            ch |= 0x20;
+        ls += chr(ch);
+    }
+    return ls;
+};
+
+// mqtt required cfgs
+let dev_id = Cfg.get('device.id');
+let thing_id = tolowercase(dev_id.slice(dev_id.length - 6, dev_id.length));
+let mqtt_will_topic = 'sonoff_basic/' + thing_id + '/link';
+let hab_switch_topic = 'sonoff_basic/' + thing_id;
+let hab_skip_once_topic = 'sonoff_basic/' + thing_id + '/skip_once';
+let hab_sch_enable_topic = 'sonoff_basic/' + thing_id + '/sch_enable';
+let hab_state_topic = 'sonoff_basic/' + thing_id + '/state';
+let hab_link_topic = 'sonoff_basic/' + thing_id + '/link';
+
+if (Cfg.get('mqtt.will_topic') !== mqtt_will_topic) {
+    Cfg.set({ mqtt: { will_topic: mqtt_will_topic } });    
+    Cfg.set({ mqtt: { client_id: thing_id } });
+    Cfg.set({ wifi: { sta: {dhcp_hostname: 'sonoff-' + thing_id}}});
+    Log.print(Log.INFO, '### MQTT config updated ###');
+};
 
 // WiFi Events
 
@@ -272,7 +296,7 @@ GPIO.set_button_handler(button_pin, GPIO.PULL_UP, GPIO.INT_EDGE_NEG, 500, functi
             reset_fw_defaults();
         }
         long_press_timer = null;
-    }, null);    
+    }, null);
 }, true);
 
 MQTT.sub(hab_switch_topic, function (conn, topic, command) {
@@ -340,9 +364,16 @@ Event.addHandler(Event.MGOS_WIFI_EV_STA_DISCONNECTED, function (ev, evdata, ud) 
     }
 }, null);
 
+// change blink pattern when WiFi connected but before got ip
+Event.addHandler(Event.MGOS_WIFI_EV_STA_CONNECTED, function (ev, evdata, ud) {
+    Log.print(Log.INFO, "### WiFi connected ###");
+    GPIO.blink(led_pin, 100, 900);
+}, null);
+
 // reset wifi disconect timer
 Event.addHandler(Event.MGOS_WIFI_EV_STA_IP_ACQUIRED, function (ev, evdata, ud) {
     last_wifi_disconnected = 0;
+    GPIO.blink(led_pin, 900, 100);
     Log.print(Log.INFO, "Connected and got IP addr");
 }, null);
 
@@ -368,20 +399,6 @@ let main_loop_timer = Timer.set(1000 /* 1 sec */, true /* repeat */, function ()
 
 // default: fast blink
 GPIO.setup_output(led_pin, 1);
-GPIO.blink(led_pin, 200, 200);
-
-// test long pressed using spare pin */
-// GPIO.set_button_handler(spare_pin, GPIO.PULL_UP, GPIO.INT_EDGE_NEG, 200, function (x) {
-//     Log.print(Log.INFO, 'spare button pressed');
-//     if (long_press_timer !== null) {
-//         Timer.del(long_press_timer);
-//     }
-//     long_press_timer = Timer.set(5000, 0, function () {
-//         if (GPIO.read(spare_pin) === 0) {
-//             Log.print(Log.INFO, "### reset to factory defaults initiated! ###");
-//         }
-//         long_press_timer = null;
-//     }, null);
-// }, null);
+GPIO.blink(led_pin, 500, 500);
 
 Log.print(Log.WARN, "### init script started ###");
