@@ -61,9 +61,9 @@ Sonoff Basic has only 1Mbytes flash.
 ### WiFi Setup
 
 1. Switch your PC or smartphone to the device's WiFi network. The SSID is named like **Sonoff_??????**,
-and the password is `Sonoff`.
+and the password is `SonoffBasic`.
 
-2. Use your browser open http://192.168.4.1/
+2. Use your browser to open http://192.168.4.1/
 
 ### openHAB Configuration
 
