@@ -56,9 +56,9 @@ let hab_state_topic = 'sonoff_basic/' + thing_id + '/state';
 let hab_link_topic = 'sonoff_basic/' + thing_id + '/link';
 
 if (Cfg.get('mqtt.will_topic') !== mqtt_will_topic) {
-    Cfg.set({ mqtt: { will_topic: mqtt_will_topic } });    
+    Cfg.set({ mqtt: { will_topic: mqtt_will_topic } });
     Cfg.set({ mqtt: { client_id: thing_id } });
-    Cfg.set({ wifi: { sta: {dhcp_hostname: 'sonoff-' + thing_id}}});
+    Cfg.set({ wifi: { sta: { dhcp_hostname: 'sonoff-' + thing_id } } });
     Log.print(Log.INFO, '### MQTT config updated ###');
 };
 
@@ -348,7 +348,7 @@ Event.addHandler(MGOS_EVENT_TIME_CHANGED, function (ev, evdata, ud) {
     if (Timer.now() > 1577836800 /* 2020-01-01 */) {
         clock_sync = true;
         Log.print(Log.INFO, 'mgos clock event: clock sync ok');
-        if (sch_enable) {
+        if (sch_enable && sch.length === 0) {
             load_sch();
         }
     } else {
