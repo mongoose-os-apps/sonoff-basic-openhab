@@ -50,6 +50,7 @@ let dev_id = Cfg.get('device.id');
 let thing_id = tolowercase(dev_id.slice(dev_id.length - 6, dev_id.length));
 let mqtt_will_topic = 'sonoff_basic/' + thing_id + '/link';
 let hab_switch_topic = 'sonoff_basic/' + thing_id;
+let hab_cdt_topic = 'sonoff_basic/' + thing_id + '/cdt';
 let hab_skip_once_topic = 'sonoff_basic/' + thing_id + '/skip_once';
 let hab_sch_enable_topic = 'sonoff_basic/' + thing_id + '/sch_enable';
 let hab_state_topic = 'sonoff_basic/' + thing_id + '/state';
@@ -107,6 +108,9 @@ GPIO.write(relay_pin, 0);  // default to off
 
 GPIO.set_mode(spare_pin, GPIO.MODE_INPUT);
 GPIO.set_mode(button_pin, GPIO.MODE_INPUT);
+
+// countdown timer, in minutes, disabled = -1
+let cdt = 'OFF';
 
 // night mode
 let setNightMode = function (val) {
@@ -209,7 +213,8 @@ let update_state = function () {
         relay_state: relay_value ? 'ON' : 'OFF',
         oncount: Math.floor(oncount),
         skip_once: skip_once ? 'ON' : 'OFF',
-        sch_enable: sch_enable ? 'ON' : 'OFF'
+        sch_enable: sch_enable ? 'ON' : 'OFF',
+        cdt: cdt
     });
     let ok = MQTT.pub(hab_state_topic, pubmsg, 1, 1);
     Log.print(Log.INFO, 'Published:' + (ok ? 'OK' : 'FAIL') + ' topic:' + hab_state_topic + ' msg:' + pubmsg);
@@ -218,6 +223,7 @@ let update_state = function () {
 
 // set switch with bounce protection
 let set_switch = function (value) {
+    cdt = 'OFF';  // reset and disable cdt
     if ((Sys.uptime() - last_toggle) > 2) {
         GPIO.write(relay_pin, value);
         relay_value = value;
@@ -229,6 +235,7 @@ let set_switch = function (value) {
 
 // toggle switch with bounce protection
 let toggle_switch = function () {
+    cdt = 'OFF';  // reset and disable cdt
     if ((Sys.uptime() - last_toggle) > 2) {
         GPIO.toggle(relay_pin);
         relay_value = 1 - relay_value; // 0 1 toggle
@@ -312,6 +319,12 @@ MQTT.sub(hab_switch_topic, function (conn, topic, command) {
     update_state();
 }, null);
 
+MQTT.sub(hab_cdt_topic, function (conn, topic, command) {
+    Log.print(Log.DEBUG, 'rcvd cdt msg:' + command);
+    cdt = str2int(command);
+    update_state();
+}, null);
+
 MQTT.sub(hab_skip_once_topic, function (conn, topic, command) {
     Log.print(Log.DEBUG, 'rcvd skip once msg:' + command);
     skip_once = (command === 'ON') ? true : false;
@@ -382,8 +395,17 @@ let main_loop_timer = Timer.set(1000 /* 1 sec */, true /* repeat */, function ()
     tick_count++;
 
     if ((tick_count % 60) === 0) { /* 1 min */
-        if (clock_sync) run_sch();
-        // lost network for too long?
+        // process countdown timer
+        // dont run schedule if counting down
+        if (cdt > 0) {
+            if (--cdt < 1) toggle_switch();
+            update_state();
+        }
+        else {
+            if (clock_sync) run_sch();
+        }
+
+        // lost network for too long?        
         if (last_wifi_disconnected > 0 && ((Sys.uptime() - last_wifi_disconnected) > 300)) {
             // reboot to workaround wifi reconnect issue
             Log.print(Log.WARN, "reboot to workaround wifi reconnect issue");
@@ -395,6 +417,7 @@ let main_loop_timer = Timer.set(1000 /* 1 sec */, true /* repeat */, function ()
         tick_count = 0;
         if (mqtt_connected) update_state();
     }
+
 }, null);
 
 // default: fast blink

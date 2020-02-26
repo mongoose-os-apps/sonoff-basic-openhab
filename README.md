@@ -7,13 +7,14 @@ It targets to work with openHAB 2.4 or newer using the MQTT binding.
 ### Features
 
 * LED blink pattern to indicate connectivity
-* On board button to control switch manually in case of no connectivity
+* On board button to toggle the switch manually in case of no connectivity
 * Bounce protection
 * Device local schedule timer
+* Countdown timer to toggle the switch
 * Switch ON duration counter for energy consumption analysis
 * Night Mode to turn off status LED
 * Web interface for setting up WiFi SSID and password
-* Reset to firmware defaults with on board button
+* Reset to firmware defaults by holding the on board button for over 5 seconds
 
 ### Configuration options
 
@@ -84,6 +85,12 @@ And a user in California (DST):
 Then, create a JSON file `schedules.json` and upload to the filesystem. Please reference the
 supplied sample for syntax.
 
+### Countdown timer
+
+When the countdown timer reached zero, the switch will be toggled.
+
+The local schedule timer will be disabled until the countdown is completed.
+
 ### Night Mode
 
 Example: set night mode from 23:00 to 6:30:
@@ -92,4 +99,4 @@ Example: set night mode from 23:00 to 6:30:
 
 ### Reset to firmware defaults
 
-Press and hold the on board button for 5 seconds.
+Press and hold the on board button for over 5 seconds.
