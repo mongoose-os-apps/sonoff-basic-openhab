@@ -1,7 +1,7 @@
 /*
- * Logic for sonoff-basic-openhab
- * Author: Michael Fung <hkuser2001 at the gmail service>
-*/
+ * Logic for Sonoff Basic compatible with openHAB 2.5+
+ * Requires matching text file configuration at the openHAB server
+ */
 
 // Load Mongoose OS API
 load('api_timer.js');
@@ -50,10 +50,6 @@ let dev_id = Cfg.get('device.id');
 let thing_id = tolowercase(dev_id.slice(dev_id.length - 6, dev_id.length));
 let mqtt_will_topic = 'sonoff_basic/' + thing_id + '/link';
 let mqtt_control_topics = 'sonoff_basic/' + thing_id + '/+/set';
-// let hab_switch_topic = 'sonoff_basic/' + thing_id + '/switch';
-// let hab_cdt_topic = 'sonoff_basic/' + thing_id + '/cdt';
-// let hab_skip_once_topic = 'sonoff_basic/' + thing_id + '/skip_once';
-// let hab_sch_enable_topic = 'sonoff_basic/' + thing_id + '/sch_enable';
 let hab_state_topic = 'sonoff_basic/' + thing_id + '/state';
 let hab_link_topic = 'sonoff_basic/' + thing_id + '/link';
 
