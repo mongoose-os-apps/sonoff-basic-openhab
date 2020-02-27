@@ -49,10 +49,11 @@ let tolowercase = function (s) {
 let dev_id = Cfg.get('device.id');
 let thing_id = tolowercase(dev_id.slice(dev_id.length - 6, dev_id.length));
 let mqtt_will_topic = 'sonoff_basic/' + thing_id + '/link';
-let hab_switch_topic = 'sonoff_basic/' + thing_id;
-let hab_cdt_topic = 'sonoff_basic/' + thing_id + '/cdt';
-let hab_skip_once_topic = 'sonoff_basic/' + thing_id + '/skip_once';
-let hab_sch_enable_topic = 'sonoff_basic/' + thing_id + '/sch_enable';
+let mqtt_control_topics = 'sonoff_basic/' + thing_id + '/+/set';
+// let hab_switch_topic = 'sonoff_basic/' + thing_id + '/switch';
+// let hab_cdt_topic = 'sonoff_basic/' + thing_id + '/cdt';
+// let hab_skip_once_topic = 'sonoff_basic/' + thing_id + '/skip_once';
+// let hab_sch_enable_topic = 'sonoff_basic/' + thing_id + '/sch_enable';
 let hab_state_topic = 'sonoff_basic/' + thing_id + '/state';
 let hab_link_topic = 'sonoff_basic/' + thing_id + '/link';
 
@@ -113,7 +114,7 @@ GPIO.set_mode(button_pin, GPIO.MODE_INPUT);
 let CDT = {
     count: 'OFF',
     timer: null,
-    disable: function() {
+    disable: function () {
         if (this.timer !== null) {
             Timer.del(this.timer);
             this.timer = null;
@@ -317,55 +318,56 @@ GPIO.set_button_handler(button_pin, GPIO.PULL_UP, GPIO.INT_EDGE_NEG, 500, functi
     }, null);
 }, true);
 
-MQTT.sub(hab_switch_topic, function (conn, topic, command) {
-    Log.print(Log.DEBUG, 'rcvd sw ctrl msg:' + command);
+MQTT.sub(mqtt_control_topics, function (conn, topic, msg) {
+    Log.print(Log.DEBUG, 'rcvd thing topic:' + topic + ' msg:' + msg);
 
-    if (command === 'ON') {
-        set_switch(1);
-    } else if (command === 'OFF') {
-        set_switch(0);
-    } else {
-        Log.print(Log.ERROR, 'Unsupported command');
+    // switch
+    if (topic.indexOf('switch') !== -1) {
+        if (msg === 'ON') {
+            set_switch(1);
+        } else if (msg === 'OFF') {
+            set_switch(0);
+        } else {
+            Log.print(Log.ERROR, 'Unsupported command: ' + msg);
+            return;
+        }
     }
-    update_state();
-}, null);
-
-MQTT.sub(hab_cdt_topic, function (conn, topic, command) {
-    Log.print(Log.DEBUG, 'rcvd CDT msg:' + command);
-    
-    CDT.count = str2int(command);
-    if (CDT.count < 1) {
-        CDT.disable();    
-        return;
+    // skip next sch
+    else if (topic.indexOf('skip') !== -1) {  // skip next sch
+        skip_once = (msg === 'ON') ? true : false;
+        Cfg.set({ timer: { skip_once: skip_once } });
     }
-    if (CDT.timer === null) {    
-        CDT.timer = Timer.set(60000 /* 1 min */, true /* repeat */, function () {        
-            CDT.count--;  // --CDT.count syntax error
-            if (CDT.count < 1) {
-                Log.print(Log.INFO, 'Countdown finished');
-                toggle_switch(); // this timer will be disabled by calling this function
-            } else {
-                update_state();
+    // countdown timer
+    else if (topic.indexOf('cdt') !== -1) {  // skip next sch
+        CDT.count = str2int(msg);
+        if (CDT.count < 1) {
+            CDT.disable();
+        } else {
+            if (CDT.timer === null) {
+                CDT.timer = Timer.set(60000 /* 1 min */, true /* repeat */, function () {
+                    CDT.count--;  // --CDT.count syntax error
+                    if (CDT.count < 1) {
+                        Log.print(Log.INFO, 'Countdown finished');
+                        toggle_switch(); // this timer will be disabled by calling this function
+                    } else {
+                        update_state();
+                    }
+                }, null);
             }
-        }, null);
+        }
+    }
+    // enable sch
+    else if (topic.indexOf('sch_enable') !== -1) {
+        sch_enable = (msg === 'ON') ? true : false;
+        Cfg.set({ timer: { sch_enable: sch_enable } });
+    }
+    else {
+        Log.print(Log.ERROR, 'unspported topic');
     }
 
     update_state();
 }, null);
 
-MQTT.sub(hab_skip_once_topic, function (conn, topic, command) {
-    Log.print(Log.DEBUG, 'rcvd skip once msg:' + command);
-    skip_once = (command === 'ON') ? true : false;
-    Cfg.set({ timer: { skip_once: skip_once } });
-    update_state();
-}, null);
-
-MQTT.sub(hab_sch_enable_topic, function (conn, topic, command) {
-    Log.print(Log.DEBUG, 'rcvd skip once msg:' + command);
-    sch_enable = (command === 'ON') ? true : false;
-    Cfg.set({ timer: { sch_enable: sch_enable } });
-    update_state();
-}, null);
 
 MQTT.setEventHandler(function (conn, ev, edata) {
     if (ev === MQTT.EV_CONNACK) {

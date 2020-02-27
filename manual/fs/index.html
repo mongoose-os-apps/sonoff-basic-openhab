@@ -158,11 +158,17 @@
         }
       };
       var xhttp = new XMLHttpRequest();
+      var isDone = false;
       xhttp.onreadystatechange = function () {
+        if (isDone) {
+          alert('WiFi setup completed.');
+          return;
+        }
         if (this.readyState == 4 && this.status == 200) {
           xhttp.open("POST", "/rpc/Config.Save", true);
           xhttp.setRequestHeader("Content-type", "application/json");
           xhttp.send(JSON.stringify({ reboot: true }));
+          isDone = true;
         }
       };
 
