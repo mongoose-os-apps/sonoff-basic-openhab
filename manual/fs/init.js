@@ -110,7 +110,18 @@ GPIO.set_mode(spare_pin, GPIO.MODE_INPUT);
 GPIO.set_mode(button_pin, GPIO.MODE_INPUT);
 
 // countdown timer, in minutes, disabled = -1
-let cdt = 'OFF';
+let CDT = {
+    count: 'OFF',
+    timer: null,
+    disable: function() {
+        if (this.timer !== null) {
+            Timer.del(this.timer);
+            this.timer = null;
+        }
+        this.count = 'OFF';
+        Log.print(Log.INFO, 'Countdown timer disabled');
+    },
+};
 
 // night mode
 let setNightMode = function (val) {
@@ -214,7 +225,7 @@ let update_state = function () {
         oncount: Math.floor(oncount),
         skip_once: skip_once ? 'ON' : 'OFF',
         sch_enable: sch_enable ? 'ON' : 'OFF',
-        cdt: cdt
+        cdt: CDT.count
     });
     let ok = MQTT.pub(hab_state_topic, pubmsg, 1, 1);
     Log.print(Log.INFO, 'Published:' + (ok ? 'OK' : 'FAIL') + ' topic:' + hab_state_topic + ' msg:' + pubmsg);
@@ -223,7 +234,7 @@ let update_state = function () {
 
 // set switch with bounce protection
 let set_switch = function (value) {
-    cdt = 'OFF';  // reset and disable cdt
+    CDT.disable();  // reset and disable CDT
     if ((Sys.uptime() - last_toggle) > 2) {
         GPIO.write(relay_pin, value);
         relay_value = value;
@@ -235,7 +246,7 @@ let set_switch = function (value) {
 
 // toggle switch with bounce protection
 let toggle_switch = function () {
-    cdt = 'OFF';  // reset and disable cdt
+    CDT.disable();  // reset and disable CDT
     if ((Sys.uptime() - last_toggle) > 2) {
         GPIO.toggle(relay_pin);
         relay_value = 1 - relay_value; // 0 1 toggle
@@ -320,8 +331,25 @@ MQTT.sub(hab_switch_topic, function (conn, topic, command) {
 }, null);
 
 MQTT.sub(hab_cdt_topic, function (conn, topic, command) {
-    Log.print(Log.DEBUG, 'rcvd cdt msg:' + command);
-    cdt = str2int(command);
+    Log.print(Log.DEBUG, 'rcvd CDT msg:' + command);
+    
+    CDT.count = str2int(command);
+    if (CDT.count < 1) {
+        CDT.disable();    
+        return;
+    }
+    if (CDT.timer === null) {    
+        CDT.timer = Timer.set(60000 /* 1 min */, true /* repeat */, function () {        
+            CDT.count--;  // --CDT.count syntax error
+            if (CDT.count < 1) {
+                Log.print(Log.INFO, 'Countdown finished');
+                toggle_switch(); // this timer will be disabled by calling this function
+            } else {
+                update_state();
+            }
+        }, null);
+    }
+
     update_state();
 }, null);
 
@@ -397,13 +425,7 @@ let main_loop_timer = Timer.set(1000 /* 1 sec */, true /* repeat */, function ()
     if ((tick_count % 60) === 0) { /* 1 min */
         // process countdown timer
         // dont run schedule if counting down
-        if (cdt > 0) {
-            if (--cdt < 1) toggle_switch();
-            update_state();
-        }
-        else {
-            if (clock_sync) run_sch();
-        }
+        if (clock_sync && CDT.count === 'OFF') run_sch();
 
         // lost network for too long?        
         if (last_wifi_disconnected > 0 && ((Sys.uptime() - last_wifi_disconnected) > 300)) {

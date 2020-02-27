@@ -91,6 +91,8 @@ When the countdown timer reached zero, the switch will be toggled.
 
 The local schedule timer will be disabled until the countdown is completed.
 
+This timer is not persisted across reboots.
+
 ### Night Mode
 
 Example: set night mode from 23:00 to 6:30:
