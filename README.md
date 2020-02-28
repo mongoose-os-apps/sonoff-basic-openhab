@@ -29,9 +29,9 @@ Things, Channels and Items will be automatically setup.
 
 ### openHAB UI
 
-![openHAB UI](https://raw.githubusercontent.com/mongoose-os-apps/sonoff-basic-openhab/master/openhab/sonoff-basic-ui.png "openHAB for Android")
+![openHAB UI](images/openhab-ui.jpg)
 
-![energy consumption chart](https://raw.githubusercontent.com/mongoose-os-apps/sonoff-basic-openhab/master/openhab/energy-chart.png "energy consumption chart")
+![energy consumption chart](images/energy-chart.png "energy consumption chart")
 
 ### Build for Homie support
 
