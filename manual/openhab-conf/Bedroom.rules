@@ -1,0 +1,48 @@
+import org.joda.time.DateTime
+
+rule "Update BedroomSonoff ON Counter"
+when
+    Item BedroomSonoff_OnCount received update
+then
+	var Double newval = 0.0
+	if ( (BedroomSonoff_Usage.state !== null )
+		&& (BedroomSonoff_Usage.state.toString != 'NULL')
+	) {
+		newval = Double.parseDouble(BedroomSonoff_Usage.state.toString)
+	}
+
+	var Double count = Double.parseDouble(BedroomSonoff_OnCount.state.toString)
+	logInfo("rules", "UpdateCounters: increase BedroomSonoff_Usage by " + count.toString + " seconds")
+
+	// convert count from seconds to minutes before adding
+	newval = newval + (count / 60)
+	BedroomSonoff_Usage.postUpdate(newval)
+end
+
+rule "Check Stale Reported Data"
+when
+	Time cron "10 0/5 * * * ?"  // every 10th second of each 5th minute
+then
+	//logInfo("rules", "Cron Jobs run, ts=" + now.millis )
+	var DateTime min10ago = now.minusMinutes(10)
+
+	if ((new DateTime(BedroomSonoff_Uptime.lastUpdate)) > min10ago ) {
+		BedroomSonoff_Health.postUpdate("ON")
+	} else {
+		logInfo("rules", "BedroomSonoff update delayed")
+		BedroomSonoff_Health.postUpdate("OFF")
+	}
+end
+
+rule "Reset Daily Usage"
+when
+	Time cron "10 0 0 * * ?"  // 00:00:10
+then
+	var Double current_val
+	logInfo("rules", "update BedroomSonoff_Usage to rrd before reset")
+	current_val = Double.parseDouble(BedroomSonoff_Usage.state.toString)
+	BedroomSonoff_Usage.postUpdate(current_val.intValue())
+	BedroomSonoff_Usage.persist("rrd4j")
+	logInfo("rules", "Reset BedroomSonoff_Usage Counter")
+	BedroomSonoff_Usage.postUpdate(0);
+end

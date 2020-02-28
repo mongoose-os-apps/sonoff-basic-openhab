@@ -1,0 +1,3 @@
+# upload init.js to dev board
+
+mos put fs/init.js

@@ -1,0 +1,7 @@
+# build only for nodemcu, openhab homie mode
+
+cat mos-homie.yml > mos.yml
+
+mos build --local \
+  --deps-dir $DEPS_DIR --binary-libs-dir $LIBS_DIR \
+  --platform esp8266

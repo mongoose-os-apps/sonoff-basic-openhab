@@ -1,7 +1,7 @@
 /*
- * Logic for sonoff-basic-openhab
- * Author: Michael Fung <hkuser2001 at the gmail service>
-*/
+ * Logic for Sonoff Basic compatible with openHAB 2.5+
+ * Requires matching text file configuration at the openHAB server
+ */
 
 // Load Mongoose OS API
 load('api_timer.js');
@@ -15,31 +15,8 @@ load('api_file.js');
 load('api_rpc.js');
 load('api_events.js');
 
-// helpers
-// (convert A-Z to a-z)
-let tolowercase = function (s) {
-    let ls = '';
-    for (let i = 0; i < s.length; i++) {
-        let ch = s.at(i);
-        if (ch >= 0x41 && ch <= 0x5A)
-            ch |= 0x20;
-        ls += chr(ch);
-    }
-    return ls;
-};
-// string to integer
-let str2int = ffi('int str2int(char *)');
-// mqtt pub wrapper
-let publish = function (topic, msg) {
-    let ok = MQTT.pub(topic, msg, 1, true);	// QoS = 1, retain
-    Log.print(Log.INFO, 'Published:' + (ok ? 'OK' : 'FAIL') + ' topic:' + topic + ' msg:' + msg);
-    return ok;
-};
-
-
 // define variables
-let client_id = Cfg.get('device.id');
-let thing_id = tolowercase(client_id.slice(client_id.length - 6, client_id.length));
+
 let led_pin = 13; // Sonoff LED pin
 let relay_pin = 12;  // Sonoff relay pin
 let spare_pin = 14;  // Sonoff not connected
@@ -53,75 +30,59 @@ let relay_last_on_ts = null;
 let oncount = 0; // relay ON state duration
 let sch_enable = Cfg.get('timer.sch_enable');
 let skip_once = false;  // skip next schedule for once
+let last_wifi_disconnected = 0; // or Sys.Uptime() if we sure can catch the first cconnected evt
+let long_press_timer = null;
 
-// homie structure
-let base_topic = 'homie/' + thing_id;
-let state_topic = base_topic + '/$state';
-let stats_topic = base_topic + '/$stats';
-let relay_state_topic = base_topic + '/relay/state';
-//let relay_state_control_topic = relay_state_topic + '/set';
-let relay_skip_topic = base_topic + '/relay/skip';
-//let relay_skip_control_topic = base_topic + '/relay/skip';
-let relay_ensch_topic = base_topic + '/relay/ensch';
-let relay_oncount_topic = base_topic + '/relay/oncount';
-
-let system_uptime_topic = base_topic + '/system/uptime';
-let system_ram_topic = base_topic + '/system/ram';
-
-// homie-required last will
-if (Cfg.get('mqtt.will_topic') !== state_topic) {
-    Cfg.set({ mqtt: { will_topic: state_topic } });
-    Cfg.set({ mqtt: { will_message: 'lost' } });
-    Cfg.set({ mqtt: { client_id: client_id } });
-    Log.print(Log.INFO, 'MQTT last will has been updated');
+// (convert A-Z to a-z)
+let tolowercase = function (s) {
+    let ls = '';
+    for (let i = 0; i < s.length; i++) {
+        let ch = s.at(i);
+        if (ch >= 0x41 && ch <= 0x5A)
+            ch |= 0x20;
+        ls += chr(ch);
+    }
+    return ls;
 };
 
-let homie_init = function () {
-    publish(state_topic, 'init');
-    publish(base_topic + '/$homie', '4.0.0');
-    publish(base_topic + '/$name', 'Sonoff Basic (Homie Edition)');
-    publish(base_topic + '/$extensions', '');
-    //    publish(base_topic + '/$extensions', 'org.homie.legacy-stats:0.1.1:[4.x]');
-    //    publish(stats_topic + '/interval', 0);	// OH2.4-friendly
-    publish(base_topic + '/$nodes', 'relay,system');
-    publish(base_topic + '/relay/$name', 'relay');
-    publish(base_topic + '/relay/$type', 'on/off');
-    publish(base_topic + '/relay/$properties', 'state,skip,ensch,oncount');
+// mqtt required cfgs
+let dev_id = Cfg.get('device.id');
+let thing_id = tolowercase(dev_id.slice(dev_id.length - 6, dev_id.length));
+let mqtt_will_topic = 'sonoff_basic/' + thing_id + '/link';
+let mqtt_control_topics = 'sonoff_basic/' + thing_id + '/+/set';
+let hab_state_topic = 'sonoff_basic/' + thing_id + '/state';
+let hab_link_topic = 'sonoff_basic/' + thing_id + '/link';
 
-    publish(base_topic + '/relay/state/$name', 'Relay state');
-    publish(base_topic + '/relay/state/$datatype', 'boolean');
-    publish(base_topic + '/relay/state/$settable', 'true');
-    publish(base_topic + '/relay/state/$retained', 'true');
-
-    publish(base_topic + '/relay/skip/$name', 'Skip next schedule');
-    publish(base_topic + '/relay/skip/$datatype', 'boolean');
-    publish(base_topic + '/relay/skip/$settable', 'true');
-    publish(base_topic + '/relay/skip/$retained', 'false');
-
-    publish(base_topic + '/relay/ensch/$name', 'Enable schedule');
-    publish(base_topic + '/relay/ensch/$datatype', 'boolean');
-    publish(base_topic + '/relay/ensch/$settable', 'true');
-    publish(base_topic + '/relay/ensch/$retained', 'false');
-
-    publish(base_topic + '/relay/oncount/$name', 'On count');
-    publish(base_topic + '/relay/oncount/$datatype', 'integer');
-    //publish(base_topic + '/relay/oncount/$settable', 'false');
-    publish(base_topic + '/relay/oncount/$retained', 'false');
-
-    publish(base_topic + '/system/$name', 'system');
-    publish(base_topic + '/system/$type', 'system');
-    publish(base_topic + '/system/$properties', 'uptime,ram');
-
-    publish(base_topic + '/system/uptime/$name', 'Uptime');
-    publish(base_topic + '/system/uptime/$datatype', 'integer');
-    //publish(base_topic + '/system/uptime/$settable', 'false');
-
-    publish(base_topic + '/system/ram/$name', 'Free RAM');
-    publish(base_topic + '/system/ram/$datatype', 'integer');
-    //publish(base_topic + '/system/ram/$settable', 'false');
-
-    publish(state_topic, 'ready');
+if (Cfg.get('mqtt.will_topic') !== mqtt_will_topic) {
+    Cfg.set({ mqtt: { will_topic: mqtt_will_topic } });
+    Cfg.set({ mqtt: { client_id: thing_id } });
+    Cfg.set({ wifi: { sta: { dhcp_hostname: 'sonoff-' + thing_id } } });
+    Log.print(Log.INFO, '### MQTT config updated ###');
 };
+
+// WiFi Events
+
+// #define MGOS_WIFI_EV_BASE MGOS_EVENT_BASE('W', 'F', 'I')
+// #define MGOS_EVENT_GRP_WIFI MGOS_WIFI_EV_BASE
+
+// /* In the comment, the type of `void *ev_data` is specified */
+// enum mgos_wifi_event {
+//   MGOS_WIFI_EV_STA_DISCONNECTED =
+//       MGOS_WIFI_EV_BASE,            /* Arg: mgos_wifi_sta_disconnected_arg */
+//   MGOS_WIFI_EV_STA_CONNECTING,      /* Arg: NULL */
+//   MGOS_WIFI_EV_STA_CONNECTED,       /* Arg: mgos_wifi_sta_connected_arg */
+//   MGOS_WIFI_EV_STA_IP_ACQUIRED,     /* Arg: NULL */
+//   MGOS_WIFI_EV_AP_STA_CONNECTED,    /* Arg: mgos_wifi_ap_sta_connected_arg */
+//   MGOS_WIFI_EV_AP_STA_DISCONNECTED, /* Arg: mgos_wifi_ap_sta_disconnected_arg */
+// };
+Event.WIFI = Event.baseNumber('WFI');
+Event.MGOS_WIFI_EV_STA_DISCONNECTED = Event.WIFI;
+Event.MGOS_WIFI_EV_STA_CONNECTED = Event.WIFI + 2;
+Event.MGOS_WIFI_EV_STA_IP_ACQUIRED = Event.WIFI + 3;
+
+// helper functions
+let str2int = ffi('int str2int(char *)');
+let reset_fw_defaults = ffi('void reset_firmware_defaults()');
 
 // sntp sync event:
 // ref: https://community.mongoose-os.com/t/add-sntp-synced-event/1208?u=michaelfung
@@ -144,6 +105,20 @@ GPIO.write(relay_pin, 0);  // default to off
 
 GPIO.set_mode(spare_pin, GPIO.MODE_INPUT);
 GPIO.set_mode(button_pin, GPIO.MODE_INPUT);
+
+// countdown timer, in minutes, disabled = -1
+let CDT = {
+    count: 'OFF',
+    timer: null,
+    disable: function () {
+        if (this.timer !== null) {
+            Timer.del(this.timer);
+            this.timer = null;
+        }
+        this.count = 'OFF';
+        Log.print(Log.INFO, 'Countdown timer disabled');
+    },
+};
 
 // night mode
 let setNightMode = function (val) {
@@ -231,9 +206,6 @@ RPC.addHandler('ReloadSchedule', function (args) {
 // notify server of switch state
 let update_state = function () {
     let uptime = Sys.uptime();
-    let ok = false;
-
-    // calc oncount
     if (relay_last_on_ts !== null) {
         oncount += uptime - relay_last_on_ts;
     }
@@ -243,39 +215,23 @@ let update_state = function () {
         relay_last_on_ts = null;
     }
 
-    /*
     let pubmsg = JSON.stringify({
         uptime: uptime,
         memory: Sys.free_ram(),
         relay_state: relay_value ? 'ON' : 'OFF',
         oncount: Math.floor(oncount),
         skip_once: skip_once ? 'ON' : 'OFF',
-        sch_enable: sch_enable ? 'ON' : 'OFF'
+        sch_enable: sch_enable ? 'ON' : 'OFF',
+        cdt: CDT.count
     });
-    */
-
-    //ok = MQTT.pub(system_state_topic, pubmsg);
-    //Log.print(Log.INFO, 'Publish system state ' + (ok ? 'OK' : 'FAIL') + ' msg: ' + pubmsg);
-
-    ok = publish(relay_state_topic, relay_value ? 'true' : 'false');
-    Log.print(Log.INFO, 'Publish relay state ' + (ok ? 'OK' : 'FAILED'));
-
-    ok = publish(relay_skip_topic, skip_once ? 'true' : 'false');
-    Log.print(Log.INFO, 'Publish relay skip ' + (ok ? 'OK' : 'FAILED'));
-    
-    ok = publish(relay_ensch_topic, sch_enable ? 'true' : 'false');
-    Log.print(Log.INFO, 'Publish relay ensch ' + (ok ? 'OK' : 'FAILED'));
-    
-    ok = publish(relay_oncount_topic, JSON.stringify(Math.floor(oncount)));
-    Log.print(Log.INFO, 'Publish relay oncount ' + (ok ? 'OK' : 'FAILED'));
-    if (ok) {
-        oncount = 0;     
-    }
-    
+    let ok = MQTT.pub(hab_state_topic, pubmsg, 1, 1);
+    Log.print(Log.INFO, 'Published:' + (ok ? 'OK' : 'FAIL') + ' topic:' + hab_state_topic + ' msg:' + pubmsg);
+    if (ok) oncount = 0;  // reset ON counter, openHAB take care of statistics logic
 };
 
 // set switch with bounce protection
 let set_switch = function (value) {
+    CDT.disable();  // reset and disable CDT
     if ((Sys.uptime() - last_toggle) > 2) {
         GPIO.write(relay_pin, value);
         relay_value = value;
@@ -287,6 +243,7 @@ let set_switch = function (value) {
 
 // toggle switch with bounce protection
 let toggle_switch = function () {
+    CDT.disable();  // reset and disable CDT
     if ((Sys.uptime() - last_toggle) > 2) {
         GPIO.toggle(relay_pin);
         relay_value = 1 - relay_value; // 0 1 toggle
@@ -345,49 +302,68 @@ GPIO.set_button_handler(button_pin, GPIO.PULL_UP, GPIO.INT_EDGE_NEG, 500, functi
     Log.print(Log.DEBUG, 'button pressed');
     toggle_switch();
     update_state();
+    if (long_press_timer !== null) {
+        Timer.del(long_press_timer);
+    }
+    long_press_timer = Timer.set(5000, 0, function () {
+        if (GPIO.read(button_pin) === 0) {
+            Log.print(Log.WARN, "### reset to firmware defaults initiated! ###");
+            reset_fw_defaults();
+        }
+        long_press_timer = null;
+    }, null);
 }, true);
 
-MQTT.sub(base_topic + '/relay/+/set', function (conn, topic, msg) {
-    Log.print(Log.INFO, 'rcvd set topic: <' + topic + '> msg: ' + msg);
+MQTT.sub(mqtt_control_topics, function (conn, topic, msg) {
+    Log.print(Log.DEBUG, 'rcvd thing topic:' + topic + ' msg:' + msg);
 
-    if (topic.indexOf('state') !== -1) {  // relay state
-        if (msg === 'true') {
+    // switch
+    if (topic.indexOf('switch') !== -1) {
+        if (msg === 'ON') {
             set_switch(1);
-        } else if (msg === 'false') {
+        } else if (msg === 'OFF') {
             set_switch(0);
         } else {
             Log.print(Log.ERROR, 'Unsupported command: ' + msg);
             return;
         }
     }
+    // skip next sch
     else if (topic.indexOf('skip') !== -1) {  // skip next sch
-        if (msg === 'true') {
-            skip_once = true;
-        } else if (msg === 'false') {
-            skip_once = false;
-        } else {
-            Log.print(Log.ERROR, 'Unsupported command: ' + msg);
-            return;
-        }
+        skip_once = (msg === 'ON') ? true : false;
         Cfg.set({ timer: { skip_once: skip_once } });
     }
-    else if (topic.indexOf('ensch') !== -1) {  // enable sch
-        if (msg === 'true') {
-            sch_enable = true;
-        } else if (msg === 'false') {
-            sch_enable = false;
+    // countdown timer
+    else if (topic.indexOf('cdt') !== -1) {  // skip next sch
+        CDT.count = str2int(msg);
+        if (CDT.count < 1) {
+            CDT.disable();
         } else {
-            Log.print(Log.ERROR, 'Unsupported command: ' + msg);
-            return;
+            if (CDT.timer === null) {
+                CDT.timer = Timer.set(60000 /* 1 min */, true /* repeat */, function () {
+                    CDT.count--;  // --CDT.count syntax error
+                    if (CDT.count < 1) {
+                        Log.print(Log.INFO, 'Countdown finished');
+                        toggle_switch(); // this timer will be disabled by calling this function
+                    } else {
+                        update_state();
+                    }
+                }, null);
+            }
         }
+    }
+    // enable sch
+    else if (topic.indexOf('sch_enable') !== -1) {
+        sch_enable = (msg === 'ON') ? true : false;
         Cfg.set({ timer: { sch_enable: sch_enable } });
     }
     else {
-        Log.print(Log.ERROR, 'Unsupported topic');
-        return;
+        Log.print(Log.ERROR, 'unspported topic');
     }
+
     update_state();
 }, null);
+
 
 MQTT.setEventHandler(function (conn, ev, edata) {
     if (ev === MQTT.EV_CONNACK) {
@@ -395,7 +371,8 @@ MQTT.setEventHandler(function (conn, ev, edata) {
         GPIO.blink(led_pin, 2800, 200); // normal blink
         Log.print(Log.INFO, 'MQTT connected');
         // publish to the online topic        
-        homie_init();
+        let ok = MQTT.pub(hab_link_topic, 'ON', 1, 1); // qos=1, retain=1(true)
+        Log.print(Log.INFO, 'pub_online_topic:' + (ok ? 'OK' : 'FAIL') + ', msg: ON');
         update_state();
     }
     else if (ev === MQTT.EV_CLOSE) {
@@ -410,7 +387,7 @@ Event.addHandler(MGOS_EVENT_TIME_CHANGED, function (ev, evdata, ud) {
     if (Timer.now() > 1577836800 /* 2020-01-01 */) {
         clock_sync = true;
         Log.print(Log.INFO, 'mgos clock event: clock sync ok');
-        if (sch_enable) {
+        if (sch_enable && sch.length === 0) {
             load_sch();
         }
     } else {
@@ -418,21 +395,53 @@ Event.addHandler(MGOS_EVENT_TIME_CHANGED, function (ev, evdata, ud) {
     }
 }, null);
 
+// set wifi disconect timer
+Event.addHandler(Event.MGOS_WIFI_EV_STA_DISCONNECTED, function (ev, evdata, ud) {
+    if (last_wifi_disconnected === 0) {  // this evt will fire if re-connect attempt fail
+        last_wifi_disconnected = Sys.uptime();
+        Log.print(Log.WARN, "### WiFi disconnected ###");
+    }
+}, null);
+
+// change blink pattern when WiFi connected but before got ip
+Event.addHandler(Event.MGOS_WIFI_EV_STA_CONNECTED, function (ev, evdata, ud) {
+    Log.print(Log.INFO, "### WiFi connected ###");
+    GPIO.blink(led_pin, 100, 900);
+}, null);
+
+// reset wifi disconect timer
+Event.addHandler(Event.MGOS_WIFI_EV_STA_IP_ACQUIRED, function (ev, evdata, ud) {
+    last_wifi_disconnected = 0;
+    GPIO.blink(led_pin, 900, 100);
+    Log.print(Log.INFO, "Connected and got IP addr");
+}, null);
+
 // timer loop to update state and run schedule jobs
 let main_loop_timer = Timer.set(1000 /* 1 sec */, true /* repeat */, function () {
     tick_count++;
+
     if ((tick_count % 60) === 0) { /* 1 min */
-        if (clock_sync) run_sch();
+        // process countdown timer
+        // dont run schedule if counting down
+        if (clock_sync && CDT.count === 'OFF') run_sch();
+
+        // lost network for too long?        
+        if (last_wifi_disconnected > 0 && ((Sys.uptime() - last_wifi_disconnected) > 300)) {
+            // reboot to workaround wifi reconnect issue
+            Log.print(Log.WARN, "reboot to workaround wifi reconnect issue");
+            Sys.reboot(500); // reboot in 500 ms
+        }
     }
 
     if ((tick_count % 300) === 0) { /* 5 min */
         tick_count = 0;
         if (mqtt_connected) update_state();
     }
+
 }, null);
 
 // default: fast blink
 GPIO.setup_output(led_pin, 1);
-GPIO.blink(led_pin, 200, 200);
+GPIO.blink(led_pin, 500, 500);
 
 Log.print(Log.WARN, "### init script started ###");

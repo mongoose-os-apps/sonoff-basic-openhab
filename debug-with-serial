@@ -1,0 +1,3 @@
+# debug with picocom, using a Rpi connected with UART0
+
+dtach -A sonoff.debug picocom --baud 115200 --imap lfcrlf --logfile sonoff.log /dev/ttyS0
