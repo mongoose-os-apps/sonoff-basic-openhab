@@ -1,7 +1,8 @@
 sitemap default label="My Sweet Home" {
 
-	Frame label="Test Board" {
+	Frame label="Bedroom Sonoff Basic" {
 		Switch item=BedroomSonoff_Relay label="Light Switch" icon="light"
+		Slider item=BedroomSonoff_CDT label="Countdown Timer: [%d min]"
         Switch item=BedroomSonoff_SkipOnce label="Skip next schedule" icon="settings"
         Switch item=BedroomSonoff_SchEnable label="Enable schedule" icon="settings"
 		Text item=BedroomSonoff_RAM label="RAM Free [%d bytes]" icon="line-stagnation"

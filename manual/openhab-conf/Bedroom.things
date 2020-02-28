@@ -5,12 +5,13 @@ Bridge mqtt:broker:local-broker [ host="127.0.0.1", qos=1, secure=false, clientI
 
         Channels:
             // channel ID is Relay, used to build unique path later in .items config
-            Type switch : Relay [stateTopic="sonoff_basic/sb-01/state", transformationPattern="JSONPATH:$.relay_state", commandTopic="sonoff_basic/sb-01", on="ON", off="OFF"]
-            Type switch : SchEnable [stateTopic="sonoff_basic/sb-01/state", transformationPattern="JSONPATH:$.sch_enable", commandTopic="sonoff_basic/sb-01/sch_enable", on="ON", off="OFF"]
-            Type switch : SkipOnce [stateTopic="sonoff_basic/sb-01/state", transformationPattern="JSONPATH:$.skip_once", commandTopic="sonoff_basic/sb-01/skip_once", on="ON", off="OFF"]
-            Type switch : Link [stateTopic="sonoff_basic/sb-01/link"]
-            Type number : OnCount [stateTopic="sonoff_basic/sb-01/state", transformationPattern="JSONPATH:$.oncount"]
-            Type string : Uptime [stateTopic="sonoff_basic/sb-01/state", transformationPattern="JS:formatUptime.js"]
-            Type number : RAM [stateTopic="sonoff_basic/sb-01/state", transformationPattern="JSONPATH:$.memory"]
+            Type switch : Relay [stateTopic="sonoff_basic/a1b2c3/state", transformationPattern="JSONPATH:$.relay_state", commandTopic="sonoff_basic/a1b2c3/switch/set", on="ON", off="OFF"]
+            Type switch : SchEnable [stateTopic="sonoff_basic/a1b2c3/state", transformationPattern="JSONPATH:$.sch_enable", commandTopic="sonoff_basic/a1b2c3/sch_enable/set", on="ON", off="OFF"]
+            Type switch : SkipOnce [stateTopic="sonoff_basic/a1b2c3/state", transformationPattern="JSONPATH:$.skip_once", commandTopic="sonoff_basic/a1b2c3/skip_once/set", on="ON", off="OFF"]
+            Type switch : Link [stateTopic="sonoff_basic/a1b2c3/link"]
+            Type number : OnCount [stateTopic="sonoff_basic/a1b2c3/state", transformationPattern="JSONPATH:$.oncount"]
+            Type string : Uptime [stateTopic="sonoff_basic/a1b2c3/state", transformationPattern="JS:formatUptime.js"]
+            Type number : RAM [stateTopic="sonoff_basic/a1b2c3/state", transformationPattern="JSONPATH:$.memory"]
+            Type dimmer : CDT [stateTopic="sonoff_basic/a1b2c3/state", transformationPattern="JSONPATH:$.cdt", commandTopic="sonoff_basic/a1b2c3/cdt/set"]
     }
 }

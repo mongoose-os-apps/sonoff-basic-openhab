@@ -10,6 +10,7 @@ Number BedroomSonoff_OnCount "For stats calcuation" {channel="mqtt:topic:local-b
 Switch BedroomSonoff_SkipOnce "Skip next schedule" {channel="mqtt:topic:local-broker:BedroomSonoff:SkipOnce"}
 Switch BedroomSonoff_SchEnable "Enable Schedule" {channel="mqtt:topic:local-broker:BedroomSonoff:SchEnable"}
 Switch BedroomSonoff_Link "Indictate connection state" {channel="mqtt:topic:local-broker:BedroomSonoff:Link"}
+Dimmer BedroomSonoff_CDT "Countdown Timer" {channel="mqtt:topic:local-broker:BedroomSonoff:CDT"}
 
 // rule data stuff:
 Number BedroomSonoff_Usage "Daily switch ON time in minutes"
